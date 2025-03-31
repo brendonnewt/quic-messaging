@@ -3,9 +3,11 @@ Goal: Apply the knowledge you've learned in new ways.
 # Project description
 This is an open-ended project. Students can extend their BearTV project or do something new from the ground up. Project ideas must be approved by Dr. Freeman.
 
-You must give a **formal presentation** of your project in place of a final exam. Each group will have ~15 minutes to present their work. Each member of the group must speak. You should have slides. Your presentation must include a demo of your project, although it may invlude a pre-recorded screen capture. In your presentation, you should introduce the problem that you addressed, how you addressed it, challenges you faced, what you learned, and next steps (if you were to continue developing it).
+You must give a **formal presentation** of your project in place of a final exam. Each group will have ~12 minutes to present their work. Each member of the group must speak. You should have slides. Your presentation must include a demo of your project, although it may invlude a pre-recorded screen capture. In your presentation, you should introduce the problem that you addressed, how you addressed it, technical challenges you faced, what you learned, and next steps (if you were to continue developing it).
 
-You may use AI LLM tools to assist with the development of your project, including code assistant tools like GitHub Copilot.
+You may use AI LLM tools to assist with the development of your project, including code assistant tools like GitHub Copilot. If you do use any AI tools, you must describe your use during your presentation.
+
+Unless you get specific approval otherwise, your project **must** include some component deployed on a cloud hosting service. You can use AWS, GCP, Azure, etc. These services have free tiers, and you might consider looking into tiers specifically for students.
 
 ## Milestones
 - You must meet with Dr. Freeman within the first week to get your project idea approved
@@ -15,8 +17,13 @@ You may use AI LLM tools to assist with the development of your project, includi
 ## Project Ideas
 - Simulate UDP packet loss and packet corruption in BearTV in a non-deterministic way (i.e., don't just drop every Nth packet). Then, extend the application protocol to be able to detect and handle this packet loss.
 - Extend the BearTV protocol to support streaming images (or video!) alongside the CC data, and visually display them on the client. This should be done in such a way that it is safely deliver*able* over *any* implementation of IPv4. The images don't have to be relevant to the caption data--you can get them randomly on the server from some image source.
-- Create a 4-player CLI-based game using the transport protocol of your choice. You'll design the application protocol as you see fit.
 - Do something hands on with a video streaming protocol such as MoQ, DASH, or HLS.
+- Implement QUIC
+- Develop a new congestion control algorithm and evaluate it compared to existing algorithms in a realistic setting
+- Make significant contributions to a relevant open-source repository (e.g., moq-rs)
+- Implement a VPN
+- Implement a DNS
+- Do something with route optimization
 - Implement an HTTP protocol and have a simple website demo
 
 --> These are just examples. I hope that you'll come up with a better idea to suit your own interests!

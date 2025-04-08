@@ -14,7 +14,7 @@ services:
     image: messaging-api
     build:
       context: ../api
-      dockerfile: api.Dockerfile
+      dockerfile: ../docker/api.Dockerfile
     restart: always
     ports:
       - '8080:8080'

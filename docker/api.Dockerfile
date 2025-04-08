@@ -5,7 +5,7 @@ FROM rust:latest AS builder
 WORKDIR /app
 
 # Copy the Cargo.toml and Cargo.lock files
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 
 # Copy over the project files
 COPY . ./

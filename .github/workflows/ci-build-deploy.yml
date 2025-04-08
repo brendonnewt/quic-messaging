@@ -18,7 +18,7 @@ jobs:
 
       - name: List files in 'Docker' directory
         run: |
-          ls -l Docker/
+          ls -l docker/
 
       - name: Set IP Address
         run: |
@@ -28,12 +28,12 @@ jobs:
 
       - name: Build
         run: |
-          docker compose -f Docker/ci.docker-compose.yml build
+          docker compose -f docker/ci.docker-compose.yml build
 
       - name: Deploy
         run: |
-          docker compose -f Docker/ci.docker-compose.yml down
-          docker compose -f Docker/ci.docker-compose.yml up -d --build
+          docker compose -f docker/ci.docker-compose.yml down
+          docker compose -f docker/ci.docker-compose.yml up -d --build
 
       - name: Post-Clean
         run: |

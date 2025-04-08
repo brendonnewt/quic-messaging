@@ -8,7 +8,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 
 # Copy over the project files
-COPY . .
+COPY docker .
 
 # Build the final application binary
 RUN cargo build --release

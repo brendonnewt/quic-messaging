@@ -16,6 +16,10 @@ jobs:
         run: |
           docker image prune -af
 
+      - name: List files in 'Docker' directory
+        run: |
+          ls -l Docker/
+
       - name: Set IP Address
         run: |
           echo "Setting IP Address to PROD"

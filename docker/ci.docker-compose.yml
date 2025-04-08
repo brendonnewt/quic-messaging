@@ -13,7 +13,7 @@ services:
   api:
     image: messaging-api
     build:
-      context: ../api
+      context: .
       dockerfile: api.Dockerfile
     restart: always
     ports:

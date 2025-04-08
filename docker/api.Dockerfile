@@ -5,10 +5,10 @@ FROM rust:latest AS builder
 WORKDIR /app
 
 # Copy the Cargo.toml and Cargo.lock files
-COPY ../api/Cargo.toml ../api/Cargo.lock ./
+COPY api/Cargo.toml api/Cargo.lock ./
 
 # Copy over the project files
-COPY ../api ./
+COPY api ./
 
 # Build the final application binary
 RUN cargo build --release

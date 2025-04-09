@@ -9,10 +9,7 @@ RUN npm run build
 # Copy the build artifacts
 FROM node:latest
 WORKDIR /app
-COPY --from=build /build/.next ./.next
-COPY --from=build /build/package.json ./package.json
-COPY --from=build /build/package-lock.json ./package-lock.json
-RUN npm install --only=production
+COPY --from=build /build .
 
 # Run the app
 ENTRYPOINT ["npm", "run", "start"]

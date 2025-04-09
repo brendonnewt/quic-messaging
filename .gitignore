@@ -16,6 +16,18 @@ Cargo.lock
 # Jetbrains files
 .idea
 
+# NPM and Yarn files
+node_modules
+package-lock.json
+
+# Next.js build files
+.next
+
+# Yarn files
+yarn-error.log
+
+# MacOS files
+.DS_Store
 
 # Added by cargo
 

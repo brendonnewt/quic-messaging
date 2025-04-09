@@ -1,14 +1,14 @@
 # Build the network and containers for the Messaging webapp
 
 services:
-  #  frontend:
-  #    image: pet-adoption-frontend
-  #    build:
-  #      context: ../pet-adoption-frontend
-  #      dockerfile: ../docker/pet-adoption-frontend.Dockerfile
-  #    restart: always
-  #    ports:
-  #      - '80:3000'
+  frontend:
+    image: messaging-frontend
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    restart: always
+    ports:
+      - '3000:3000'
 
   api:
     image: messaging-api

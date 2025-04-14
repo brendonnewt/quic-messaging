@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - brendonnewt/cicd
 
 jobs:
   build-and-deploy:
@@ -14,16 +15,6 @@ jobs:
       - name: Pre-Clean
         run: |
           docker image prune -af
-
-      - name: List files in 'Docker' directory
-        run: |
-          ls -l docker/
-
-      - name: Set IP Address
-        run: |
-          echo "Setting IP Address to PROD"
-        # echo "NEXT_PUBLIC_API_URL=http://woofadoption.homes:8080" > pet-adoption-frontend/.env.production
-        # echo "cors.allowed-origin=http://woofadoption.homes:80" > pet-adoption-api/src/main/resources/application.properties
 
       - name: Build
         run: |

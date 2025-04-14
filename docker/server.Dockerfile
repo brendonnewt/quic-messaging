@@ -23,10 +23,10 @@ RUN apt-get update
 WORKDIR /app
 
 # Copy the compiled application binary from the builder stage
-COPY --from=builder /app/target/release/api /usr/local/bin/api
+COPY --from=builder /app/target/release/server /usr/local/bin/server
 
 # Copy the .env file into the container if needed
 #COPY .env /app/.env
 
 # Run the application when the container starts
-CMD ["api"]
+CMD ["server"]

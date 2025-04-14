@@ -1,20 +1,12 @@
-# Build the network and containers for the Messaging webapp
+# Build the network and containers for the Messaging app
 
 services:
-  frontend:
-    image: messaging-frontend
-    build:
-      context: ../frontend
-      dockerfile: ../docker/frontend.Dockerfile
-    restart: always
-    ports:
-      - '3000:3000'
 
   api:
-    image: messaging-api
+    image: messaging-server
     build:
-      context: ../api
-      dockerfile: ../docker/api.Dockerfile
+      context: ../server
+      dockerfile: server.Dockerfile
     restart: always
     ports:
       - '8080:8080'

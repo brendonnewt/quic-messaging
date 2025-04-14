@@ -29,4 +29,4 @@ COPY --from=builder /app/target/release/server /usr/local/bin/server
 #COPY .env /app/.env
 
 # Run the application when the container starts
-CMD ["api"]
+CMD ["server"]

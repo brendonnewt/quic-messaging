@@ -1,0 +1,43 @@
+# Build the network and containers for the Messaging webapp
+
+services:
+  frontend:
+    image: messaging-frontend
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    restart: always
+    ports:
+      - '3000:3000'
+
+  api:
+    image: messaging-api
+    build:
+      context: ../api
+      dockerfile: ../docker/api.Dockerfile
+    restart: always
+    ports:
+      - '8080:8080'
+    environment:
+      MYSQL_HOST: db
+    volumes:
+      - uploads-data:/uploads
+
+  db:
+    image: mysql:8.4.2
+    command: --mysql-native-password=ON
+    restart: always
+    ports:
+      - '3307:3307'
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: messaging
+      MYSQL_TCP_PORT: 3307
+    volumes:
+      - mysql-data:/var/lib/mysql
+volumes:
+  mysql-data:
+  uploads-data:
+
+  # Note: we are taking advantage of the Docker network that is automatically created so
+  # that these containers are able to communicate with each other.

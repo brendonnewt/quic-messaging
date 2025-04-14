@@ -6,7 +6,7 @@ services:
     image: messaging-server
     build:
       context: ../server
-      dockerfile: server.Dockerfile
+      dockerfile: ../docker/server.Dockerfile
     restart: always
     ports:
       - '8080:8080'

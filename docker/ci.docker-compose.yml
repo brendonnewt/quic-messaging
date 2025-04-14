@@ -2,7 +2,7 @@
 
 services:
 
-  api:
+  server:
     image: messaging-server
     build:
       context: ../server

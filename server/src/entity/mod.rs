@@ -2,6 +2,8 @@
 
 pub mod prelude;
 
+pub mod chat_members;
+pub mod chats;
 pub mod friends;
 pub mod messages;
 pub mod users;

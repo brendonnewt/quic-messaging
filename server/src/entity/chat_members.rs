@@ -3,15 +3,12 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "messages")]
+#[sea_orm(table_name = "chat_members")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: i32,
-    pub chat_id: Option<i32>,
-    pub sender_id: Option<i32>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub content: Option<String>,
-    pub timestamp: Option<DateTime>,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub chat_id: i32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub user_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -21,15 +18,15 @@ pub enum Relation {
         from = "Column::ChatId",
         to = "super::chats::Column::Id",
         on_update = "NoAction",
-        on_delete = "NoAction"
+        on_delete = "Cascade"
     )]
     Chats,
     #[sea_orm(
         belongs_to = "super::users::Entity",
-        from = "Column::SenderId",
+        from = "Column::UserId",
         to = "super::users::Column::Id",
         on_update = "NoAction",
-        on_delete = "NoAction"
+        on_delete = "Cascade"
     )]
     Users,
 }

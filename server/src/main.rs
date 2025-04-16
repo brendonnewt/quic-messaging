@@ -1,28 +1,37 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use quinn::{Endpoint, Incoming};
+use tokio::sync::mpsc;
+use tokio::task;
+use std::net::ToSocketAddrs;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-#[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    HttpResponse::Ok().body(req_body)
-}
+    loop {}
+    /*
+    let addr = "[::]:4433".to_socket_addrs()?.next().unwrap();
+    let (endpoint, mut incoming) = make_server_endpoint(addr)?;
 
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
-}
+    // Shared map of connected clients
+    let clients: Clients = Arc::new(DashMap::new());
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new()
-            .service(hello)
-            .service(echo)
-            .route("/hey", web::get().to(manual_hello))
-    })
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    println!("Server listening on {}", addr);
+
+    while let Some(connecting) = incoming.next().await {
+        let clients = clients.clone();
+
+        task::spawn(async move {
+            if let Ok(conn) = connecting.await {
+                println!("New connection from {}", conn.remote_address());
+
+                // Spawn a session handler for this client
+                if let Err(e) = handle_client(conn, clients).await {
+                    eprintln!("Connection ended with error: {:?}", e);
+                }
+            }
+        });
+    }
+
+     */
+
+    Ok(())
 }

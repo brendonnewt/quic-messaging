@@ -1,28 +1,52 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+mod utils;
+mod entity;
+mod handlers;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
+use quinn::{Endpoint, Incoming};
+use tokio::sync::mpsc;
+use tokio::task;
+use std::net::ToSocketAddrs;
+use std::sync::Arc;
+use sea_orm::DatabaseConnection;
 
-#[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    HttpResponse::Ok().body(req_body)
-}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
-}
+    // Establish DB connection
+    let db_url = utils::constants::DATABASE_URL.clone();
+    let db: DatabaseConnection = sea_orm::Database::connect(&db_url).await?;
+    let db_arc = Arc::new(db);
+    
+    let response = handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    
+    println!("Response: {:?}", response);
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new()
-            .service(hello)
-            .service(echo)
-            .route("/hey", web::get().to(manual_hello))
-    })
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    loop {}
+    /*
+    let addr = "[::]:4433".to_socket_addrs()?.next().unwrap();
+    let (endpoint, mut incoming) = make_server_endpoint(addr)?;
+
+    // Shared map of connected clients
+    let clients: Clients = Arc::new(DashMap::new());
+
+    println!("Server listening on {}", addr);
+
+    while let Some(connecting) = incoming.next().await {
+        let clients = clients.clone();
+
+        task::spawn(async move {
+            if let Ok(conn) = connecting.await {
+                println!("New connection from {}", conn.remote_address());
+
+                // Spawn a session handler for this client
+                if let Err(e) = handle_client(conn, clients).await {
+                    eprintln!("Connection ended with error: {:?}", e);
+                }
+            }
+        });
+    }
+
+     */
+
+    Ok(())
 }

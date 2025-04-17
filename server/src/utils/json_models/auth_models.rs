@@ -6,7 +6,7 @@ pub struct AuthModel {
     pub encrypted_password: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AuthResponseModel {
     pub success: bool,
     pub token: String,

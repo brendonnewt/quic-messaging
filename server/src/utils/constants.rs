@@ -12,7 +12,6 @@ fn set_db_url() -> Result<String, env::VarError> {
     dotenv().ok();
     match env::var("DATABASE_URL") {
         Ok(url) => {
-            println!("DATABASE_URL: {}", url); // Log the DATABASE_URL
             Ok(url)
         }
         Err(e) => {
@@ -26,7 +25,6 @@ fn set_secret() -> Result<String, env::VarError> {
     dotenv().ok();
     match env::var("SECRET") {
         Ok(secret) => {
-            println!("SECRET: {}", secret); // Log the SECRET
             Ok(secret)
         }
         Err(e) => {

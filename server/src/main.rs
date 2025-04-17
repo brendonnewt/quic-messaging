@@ -6,7 +6,7 @@ use quinn::{Endpoint, Incoming};
 use tokio::sync::mpsc;
 use tokio::task;
 use std::net::ToSocketAddrs;
-
+use std::sync::Arc;
 use sea_orm::DatabaseConnection;
 
 #[tokio::main]
@@ -15,6 +15,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Establish DB connection
     let db_url = utils::constants::DATABASE_URL.clone();
     let db: DatabaseConnection = sea_orm::Database::connect(&db_url).await?;
+    let db_arc = Arc::new(db);
+    
+    let response = handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    
+    println!("Response: {:?}", response);
 
     loop {}
     /*

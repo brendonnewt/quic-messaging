@@ -4,7 +4,7 @@ use crate::handlers::services::auth_service;
 use crate::utils::errors::server_error::ServerError;
 use crate::utils::json_models::auth_models::AuthResponseModel;
 
-async fn register(
+pub async fn register(
     username: String,
     hashed_password: String,
     db: Arc<DatabaseConnection>,

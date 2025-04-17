@@ -1,4 +1,7 @@
 mod utils;
+mod entity;
+mod handlers;
+
 use quinn::{Endpoint, Incoming};
 use tokio::sync::mpsc;
 use tokio::task;

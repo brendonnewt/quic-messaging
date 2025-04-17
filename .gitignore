@@ -23,6 +23,9 @@ package-lock.json
 # Next.js build files
 .next
 
+# env files
+.env
+
 # Yarn files
 yarn-error.log
 

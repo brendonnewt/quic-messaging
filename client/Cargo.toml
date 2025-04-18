@@ -7,15 +7,19 @@ edition = "2024"
 # Async runtime
 tokio = { version = "1.38.0", features = ["full"] }
 
-# Useful utilities for streams, codecs, etc.
-tokio-util = { version = "0.7.10", features = ["full"] }
+# TUN device abstraction for tokio
+tokio-tun = "0.9.0"
 
-# Asynchronous stream support
+# Utilities for tokio (codecs, etc.)
+tokio-util = { version = "0.7.10", features = ["full"] }
 tokio-stream = { version = "0.1.15" }
 
-# Futures and async combinators
-futures = { version = "0.3.31", features = ["thread-pool"] }
+# Futures crate
+futures = { version = "0.3.30", features = ["thread-pool"] }
 
-# Terminal UI
+# TUI dependencies (if you’re building a UI later)
 ratatui = "0.28.1"
 crossterm = "0.27.0"
+
+# IP + TCP header parsing
+etherparse = "0.13.0"

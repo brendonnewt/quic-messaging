@@ -1,3 +1,6 @@
+mod tcp;
+mod tui;
+
 use futures::StreamExt;
 use std::error::Error;
 use std::net::Ipv4Addr;

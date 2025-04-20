@@ -40,13 +40,13 @@ pub async fn register(
     Err(ServerError::JWTCreationError(jwt::CreationError::Unexpected))
 }
 
-pub async fn login(username: String, hashed_password: String, db: Arc<DatabaseConnection>) -> Result<AuthResponseModel, ServerError> {
+pub async fn login(username: String, password: String, db: Arc<DatabaseConnection>) -> Result<AuthResponseModel, ServerError> {
     // Find the user
     let user = entity::users::Entity::find().filter(entity::users::Column::Username.eq(username)).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
 
     // If a user is found, verify the password
     if let Some(user) = user {
-        return if utils::security::verify_password(user.password_hash.as_str(), hashed_password.as_str())? {
+        return if utils::security::verify_password(password.as_str(), user.password_hash.as_str())? {
             let token = jwt::encode_jwt(user.id).map_err(|err| ServerError::JWTCreationError(err.into()))?;
             Ok(AuthResponseModel { success: true, token })
         } else {

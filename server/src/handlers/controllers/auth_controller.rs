@@ -12,3 +12,12 @@ pub async fn register(
     // Call register service
     auth_service::register(username, hashed_password, db).await
 }
+
+pub async fn login(
+    username: String,
+    password: String,
+    db: Arc<DatabaseConnection>,
+) -> Result<AuthResponseModel, ServerError> {
+    // Call login service
+    auth_service::login(username, password, db).await
+}

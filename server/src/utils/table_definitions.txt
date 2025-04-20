@@ -32,6 +32,7 @@ CREATE TABLE messages (
     chat_id INT,
     sender_id INT,
     content TEXT,
+    read BOOLEAN DEFAULT FALSE,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats(id),
     FOREIGN KEY (sender_id) REFERENCES users(id)

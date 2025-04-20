@@ -19,4 +19,7 @@ pub enum ServerError {
 
     #[error("JWT creation error: {0}")]
     JWTCreationError(#[from] CreationError),
+
+    #[error("Invalid Password: {0}")]
+    PasswordInvalid(String),
 }

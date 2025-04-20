@@ -12,7 +12,7 @@ pub async fn register(
     db: Arc<DatabaseConnection>,
 ) -> Result<AuthResponseModel, ServerError> {
     // Check if the username is already in use
-    let existing_user = entity::users::Entity::find().filter(entity::users::Column::Username.eq(username.clone())).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    let existing_user = utils::db::getters::get_user_by_username(username.clone(), db.clone()).await?;
     if let Some(_) = existing_user {
         return Err(ServerError::UserAlreadyExists);
     }
@@ -42,7 +42,7 @@ pub async fn register(
 
 pub async fn login(username: String, password: String, db: Arc<DatabaseConnection>) -> Result<AuthResponseModel, ServerError> {
     // Find the user
-    let user = entity::users::Entity::find().filter(entity::users::Column::Username.eq(username)).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    let user = utils::db::getters::get_user_by_username(username.clone(), db.clone()).await?;
 
     // If a user is found, verify the password
     if let Some(user) = user {

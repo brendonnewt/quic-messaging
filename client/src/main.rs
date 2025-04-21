@@ -5,6 +5,9 @@ mod app;
 mod event;
 mod run;
 
+use crate::app::App;
+use run::run_app;
+
 use futures::StreamExt;
 use std::error::Error;
 use std::net::Ipv4Addr;
@@ -20,8 +23,9 @@ use tokio_util::codec::{FramedRead, LinesCodec};
 
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
-
-    ui::run_tui()
+    let mut app = App::new();
+    run_app(&mut app)?;
+    Ok(())
 /*
     tokio::spawn(async move {
         packet_listener(tun, manager, closed_flag).await.unwrap();

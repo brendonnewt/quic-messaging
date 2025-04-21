@@ -1,0 +1,1 @@
+/* Handles input events and updates app state */

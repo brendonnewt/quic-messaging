@@ -1,7 +1,8 @@
 
 
-mod tui;
+mod ui;
 mod app;
+mod event;
 
 use futures::StreamExt;
 use std::error::Error;
@@ -19,7 +20,7 @@ use tokio_util::codec::{FramedRead, LinesCodec};
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
 
-    tui::run_tui()
+    ui::run_tui()
 /*
     tokio::spawn(async move {
         packet_listener(tun, manager, closed_flag).await.unwrap();

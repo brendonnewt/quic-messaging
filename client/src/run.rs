@@ -8,6 +8,8 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, stdout};
 use std::time::Duration;
 use std::io::Stdout;
+use crate::ui::registration::handle_input;
+
 pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     // Set up the terminal with the correct backend
     let backend = CrosstermBackend::new(io::stdout());
@@ -22,7 +24,7 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             match app.state {
                 AppState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
                 AppState::LoginForm => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                AppState::RegisterForm => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
+                AppState::RegisterForm => ui::registration::render::<CrosstermBackend<Stdout>>(f, app),
                 AppState::Exit => return, // Exit if we reach this state
             }
         })?;
@@ -35,6 +37,9 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         // Handle key events
         if let Some(key) = event::poll_event()? {
             match app.state {
+                AppState::RegisterForm => {
+                    handle_input(key, app);
+                }
                 AppState::MainMenu => match key.code {
                     KeyCode::Up => {
                         if app.selected_index > 0 {
@@ -54,15 +59,7 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                     },
                     _ => {}
                 },
-                AppState::LoginForm | AppState::RegisterForm => match key.code {
-                    KeyCode::Esc => {
-                        app.state = AppState::MainMenu;
-                    }
-                    _ => {
-                        // You can add more handling for the form inputs here
-                    }
-                },
-                AppState::Exit => break,
+                _ => {}
             }
         }
     }

@@ -14,6 +14,12 @@ pub enum ServerError {
     #[error("User not found")]
     UserNotFound,
     
+    #[error("Action blocked")]
+    ActionBlocked,
+    
+    #[error("Action forbidden")]
+    Forbidden,
+    
     #[error("Invalid Token: {0}")]
     InvalidToken(String),
 

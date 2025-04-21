@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 use ratatui::text::Text;
-use crate::app::{App, ActiveField, AppState};
+use crate::app::{App, ActiveField};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -24,17 +24,23 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
     // Styling to highlight the active field
     let username_style = if app.active_field == ActiveField::Username {
-        Style::default().bg(ratatui::style::Color::Yellow) // Highlight with yellow if active
+        Style::default()
+            .bg(ratatui::style::Color::Yellow)
+            .fg(ratatui::style::Color::Black)  // Ensuring text contrast
     } else {
         Style::default()
     };
     let password_style = if app.active_field == ActiveField::Password {
-        Style::default().bg(ratatui::style::Color::Yellow) // Highlight with yellow if active
+        Style::default()
+            .bg(ratatui::style::Color::Yellow)
+            .fg(ratatui::style::Color::Black)
     } else {
         Style::default()
     };
     let confirm_style = if app.active_field == ActiveField::ConfirmPassword {
-        Style::default().bg(ratatui::style::Color::Yellow) // Highlight with yellow if active
+        Style::default()
+            .bg(ratatui::style::Color::Yellow)
+            .fg(ratatui::style::Color::Black)
     } else {
         Style::default()
     };
@@ -44,7 +50,6 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Username"))
         .style(username_style);
 
-    // For password and confirm, show * to hide the input
     let password = Paragraph::new(Text::from("*".repeat(app.password.len())))
         .block(Block::default().borders(Borders::ALL).title("Password"))
         .style(password_style);
@@ -53,26 +58,18 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Confirm Password"))
         .style(confirm_style);
 
-    // Default message and dynamic feedback message
-    let message = if !app.message.is_empty() {
-        // If there's a dynamic message, show it
-        Paragraph::new(Text::from(app.message.as_str())) // Convert String to &str
-            .style(Style::default())
-    } else {
-        // Otherwise, show the default instruction
-        Paragraph::new("Press [Enter] to submit or [Esc] to go back")
-            .style(Style::default())
-    };
+    let message = Paragraph::new(app.message.clone())
+        .style(Style::default());
 
-    // Render the widgets
+    // Render the widgets in the correct chunks
     f.render_widget(username, chunks[0]);
     f.render_widget(password, chunks[1]);
     f.render_widget(confirm, chunks[2]);
     f.render_widget(message, chunks[3]);
 }
+
 pub fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
-        // Move to the next field when pressing the down arrow
         KeyCode::Down => {
             app.active_field = match app.active_field {
                 ActiveField::Username => ActiveField::Password,
@@ -80,7 +77,6 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
                 ActiveField::ConfirmPassword => ActiveField::Username,
             };
         }
-        // Move to the previous field when pressing the up arrow
         KeyCode::Up => {
             app.active_field = match app.active_field {
                 ActiveField::Username => ActiveField::ConfirmPassword,
@@ -88,7 +84,6 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
                 ActiveField::ConfirmPassword => ActiveField::Password,
             };
         }
-        // Tab to cycle through fields
         KeyCode::Tab => {
             app.active_field = match app.active_field {
                 ActiveField::Username => ActiveField::Password,
@@ -97,7 +92,6 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
             };
         }
         KeyCode::Backspace => {
-            // Handle backspace to delete characters from the current field
             let field = match app.active_field {
                 ActiveField::Username => &mut app.username,
                 ActiveField::Password => &mut app.password,
@@ -106,7 +100,6 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
             field.pop(); // Remove last character
         }
         KeyCode::Char(c) => {
-            // Insert character into the active field
             let field = match app.active_field {
                 ActiveField::Username => &mut app.username,
                 ActiveField::Password => &mut app.password,
@@ -115,25 +108,20 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
             field.push(c); // Add character to the field
         }
         KeyCode::Enter => {
-            // Check if any field is empty
-            if app.username.is_empty() || app.password.is_empty() || app.confirm_password.is_empty() {
-                app.message = String::from("All fields are required! Please fill in every field.");
-            } else if app.password != app.confirm_password {
-                // Check if password and confirm password match
-                app.message = String::from("Passwords do not match! Please try again.");
+            // Check if password and confirm password match
+            if app.password == app.confirm_password {
+                app.message = "Account created successfully!".to_string();
             } else {
-                // Success, account created
-                app.message = String::from("Account successfully created!");
-                // Optionally, reset fields or change state as needed
-                app.username.clear();
-                app.password.clear();
-                app.confirm_password.clear();
+                app.message = "Passwords do not match. Try again.".to_string();
             }
         }
         KeyCode::Esc => {
-            // Go back to the main menu
-            app.state = AppState::MainMenu;
-            app.message.clear();
+            // Navigate back to the main menu
+            app.message = "Returning to main menu...".to_string();
+            // Reset any fields if needed
+            app.username.clear();
+            app.password.clear();
+            app.confirm_password.clear();
         }
         _ => {}
     }

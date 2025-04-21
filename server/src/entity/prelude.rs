@@ -5,5 +5,6 @@ pub use super::chat_members::Entity as ChatMembers;
 pub use super::chats::Entity as Chats;
 pub use super::friend_requests::Entity as FriendRequests;
 pub use super::friends::Entity as Friends;
+pub use super::message_reads::Entity as MessageReads;
 pub use super::messages::Entity as Messages;
 pub use super::users::Entity as Users;

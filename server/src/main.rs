@@ -1,6 +1,6 @@
-mod utils;
-mod entity;
-mod handlers;
+pub mod utils;
+pub mod entity;
+pub mod handlers;
 
 use quinn::{Endpoint, Incoming};
 use tokio::sync::mpsc;

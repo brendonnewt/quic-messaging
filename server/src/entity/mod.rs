@@ -7,6 +7,7 @@ pub mod chat_members;
 pub mod chats;
 pub mod friend_requests;
 pub mod friends;
+pub mod message_reads;
 pub mod messages;
 pub mod sea_orm_active_enums;
 pub mod users;

@@ -58,3 +58,12 @@ CREATE TABLE messages (
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
 
+CREATE TABLE message_reads (
+    message_id INT NOT NULL,
+    user_id INT NOT NULL,
+    read_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (message_id, user_id),
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

@@ -8,6 +8,7 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, stdout};
 use std::time::Duration;
 use std::io::Stdout;
+use crate::ui::registration;
 use crate::ui::registration::handle_input;
 
 pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -38,7 +39,8 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(key) = event::poll_event()? {
             match app.state {
                 AppState::RegisterForm => {
-                    handle_input(key, app);
+                    handle_input(app, key);
+                    terminal.draw(|f| registration::render::<CrosstermBackend<Stdout>>(f, &app))?;
                 }
                 AppState::MainMenu => match key.code {
                     KeyCode::Up => {

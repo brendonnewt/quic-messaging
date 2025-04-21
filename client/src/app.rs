@@ -7,6 +7,12 @@ pub enum AppState {
     RegisterForm,
     Exit,
 }
+#[derive(PartialEq)]
+pub enum ActiveField {
+    Username,
+    Password,
+    ConfirmPassword,
+}
 
 pub struct App {
     pub state: AppState,
@@ -14,6 +20,8 @@ pub struct App {
     pub password: String,
     pub confirm_password: String,
     pub selected_index: usize,
+    pub active_field: ActiveField,
+    pub message: String,
 }
 
 impl App {
@@ -24,6 +32,8 @@ impl App {
             password: String::new(),
             confirm_password: String::new(),
             selected_index: 0,
+            active_field: ActiveField::Username,
+            message: String::new(),
         }
     }
 }

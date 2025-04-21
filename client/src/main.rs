@@ -3,6 +3,7 @@
 mod ui;
 mod app;
 mod event;
+mod run;
 
 use futures::StreamExt;
 use std::error::Error;

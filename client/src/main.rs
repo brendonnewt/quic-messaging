@@ -1,4 +1,4 @@
-mod tcp;
+//mod tcp;
 mod tui;
 
 use futures::StreamExt;
@@ -7,7 +7,7 @@ use std::net::Ipv4Addr;
 use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::Arc;
-use tcp::manager::Manager;
+//use tcp::manager::Manager;
 use tokio::io;
 use tokio::sync::Mutex;
 use tokio_tun::Tun;

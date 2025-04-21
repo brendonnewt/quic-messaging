@@ -17,6 +17,8 @@ use tokio_util::codec::{FramedRead, LinesCodec};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
+    tui::run_ui().await
+/*
     tokio::spawn(async move {
         packet_listener(tun, manager, closed_flag).await.unwrap();
     });
@@ -137,4 +139,6 @@ async fn packet_listener(
             }
         }
     }
+
+ */
 }

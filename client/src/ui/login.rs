@@ -95,7 +95,7 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
 
                 if username.is_empty() || password.is_empty() {
                     app.message = "Please fill both fields.".into();
-                } else if username == "admin" && password == "password" {
+                } else if username == "goober" && password == "password" {
                     app.message = "Login successful!".into();
                     app.username = username.clone(); // Store the temporary
                     app.logged_in = true;

@@ -24,7 +24,6 @@ pub enum FormState {
     UserMenu {
         selected_index: usize,
     },
-
     Exit,
 }
 
@@ -93,8 +92,38 @@ impl App {
             _ => {}
         }
     }
+
     pub fn set_user_menu(&mut self) {
         self.state = FormState::UserMenu { selected_index: 0 };
+    }
+
+    // Setters for LoginForm and RegisterForm fields
+    pub fn set_username(&mut self, username: String) {
+        match &mut self.state {
+            FormState::LoginForm { username: u, .. } => *u = username,
+            FormState::RegisterForm { username: u, .. } => *u = username,
+            _ => {}
+        }
+    }
+
+    pub fn set_password(&mut self, password: String) {
+        match &mut self.state {
+            FormState::LoginForm { password: p, .. } => *p = password,
+            FormState::RegisterForm { password: p, .. } => *p = password,
+            _ => {}
+        }
+    }
+
+    pub fn set_confirm_password(&mut self, confirm_password: String) {
+        if let FormState::RegisterForm { confirm_password: c, .. } = &mut self.state {
+            *c = confirm_password;
+        }
+    }
+
+    pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {
+        if let FormState::UserMenu { selected_index: s } = &mut self.state {
+            *s = selected_index;
+        }
     }
 }
 

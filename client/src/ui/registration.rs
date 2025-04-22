@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 use ratatui::text::Text;
-use crate::app::{App, ActiveField};
+use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -22,22 +22,25 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         ])
         .split(f.size());
 
+    // Retrieve the active field using the get_active_field method
+    let active_field = app.get_active_field();
+
     // Styling to highlight the active field
-    let username_style = if app.active_field == ActiveField::Username {
+    let username_style = if active_field == Some(ActiveField::Username) {
         Style::default()
             .bg(ratatui::style::Color::Yellow)
             .fg(ratatui::style::Color::Black)  // Ensuring text contrast
     } else {
         Style::default()
     };
-    let password_style = if app.active_field == ActiveField::Password {
+    let password_style = if active_field == Some(ActiveField::Password) {
         Style::default()
             .bg(ratatui::style::Color::Yellow)
             .fg(ratatui::style::Color::Black)
     } else {
         Style::default()
     };
-    let confirm_style = if app.active_field == ActiveField::ConfirmPassword {
+    let confirm_style = if active_field == Some(ActiveField::ConfirmPassword) {
         Style::default()
             .bg(ratatui::style::Color::Yellow)
             .fg(ratatui::style::Color::Black)
@@ -46,15 +49,24 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     };
 
     // Render the actual text for username, and asterisks for password fields
-    let username = Paragraph::new(Text::from(app.username.clone()))
+    let username = Paragraph::new(Text::from(match &app.state {
+        FormState::RegisterForm { username, .. } => username.clone(),
+        _ => String::new(),
+    }))
         .block(Block::default().borders(Borders::ALL).title("Username"))
         .style(username_style);
 
-    let password = Paragraph::new(Text::from("*".repeat(app.password.len())))
+    let password = Paragraph::new(Text::from("*".repeat(match &app.state {
+        FormState::RegisterForm { password, .. } => password.len(),
+        _ => 0,
+    })))
         .block(Block::default().borders(Borders::ALL).title("Password"))
         .style(password_style);
 
-    let confirm = Paragraph::new(Text::from("*".repeat(app.confirm_password.len())))
+    let confirm = Paragraph::new(Text::from("*".repeat(match &app.state {
+        FormState::RegisterForm { confirm_password, .. } => confirm_password.len(),
+        _ => 0,
+    })))
         .block(Block::default().borders(Borders::ALL).title("Confirm Password"))
         .style(confirm_style);
 
@@ -71,57 +83,67 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 pub fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Down => {
-            app.active_field = match app.active_field {
-                ActiveField::Username => ActiveField::Password,
-                ActiveField::Password => ActiveField::ConfirmPassword,
-                ActiveField::ConfirmPassword => ActiveField::Username,
-            };
+            if let Some(active_field) = app.get_active_field() {
+                let next_field = match active_field {
+                    ActiveField::Username => ActiveField::Password,
+                    ActiveField::Password => ActiveField::ConfirmPassword,
+                    ActiveField::ConfirmPassword => ActiveField::Username,
+                };
+                app.set_active_field(next_field);
+            }
         }
         KeyCode::Up => {
-            app.active_field = match app.active_field {
-                ActiveField::Username => ActiveField::ConfirmPassword,
-                ActiveField::Password => ActiveField::Username,
-                ActiveField::ConfirmPassword => ActiveField::Password,
-            };
+            if let Some(active_field) = app.get_active_field() {
+                let prev_field = match active_field {
+                    ActiveField::Username => ActiveField::ConfirmPassword,
+                    ActiveField::Password => ActiveField::Username,
+                    ActiveField::ConfirmPassword => ActiveField::Password,
+                };
+                app.set_active_field(prev_field);
+            }
         }
         KeyCode::Tab => {
-            app.active_field = match app.active_field {
-                ActiveField::Username => ActiveField::Password,
-                ActiveField::Password => ActiveField::ConfirmPassword,
-                ActiveField::ConfirmPassword => ActiveField::Username,
-            };
+            if let Some(active_field) = app.get_active_field() {
+                let next_field = match active_field {
+                    ActiveField::Username => ActiveField::Password,
+                    ActiveField::Password => ActiveField::ConfirmPassword,
+                    ActiveField::ConfirmPassword => ActiveField::Username,
+                };
+                app.set_active_field(next_field);
+            }
         }
         KeyCode::Backspace => {
-            let field = match app.active_field {
-                ActiveField::Username => &mut app.username,
-                ActiveField::Password => &mut app.password,
-                ActiveField::ConfirmPassword => &mut app.confirm_password,
-            };
-            field.pop(); // Remove last character
+            if let FormState::RegisterForm { username, password, confirm_password, active_field } = &mut app.state {
+                let field = match active_field {
+                    ActiveField::Username => username,
+                    ActiveField::Password => password,
+                    ActiveField::ConfirmPassword => confirm_password,
+                };
+                field.pop(); // Remove last character
+            }
         }
         KeyCode::Char(c) => {
-            let field = match app.active_field {
-                ActiveField::Username => &mut app.username,
-                ActiveField::Password => &mut app.password,
-                ActiveField::ConfirmPassword => &mut app.confirm_password,
-            };
-            field.push(c); // Add character to the field
+            if let FormState::RegisterForm { username, password, confirm_password, active_field } = &mut app.state {
+                let field = match active_field {
+                    ActiveField::Username => username,
+                    ActiveField::Password => password,
+                    ActiveField::ConfirmPassword => confirm_password,
+                };
+                field.push(c); // Add character to the field
+            }
         }
         KeyCode::Enter => {
-            // Check if password and confirm password match
-            if app.password == app.confirm_password {
-                app.message = "Account created successfully!".to_string();
-            } else {
-                app.message = "Passwords do not match. Try again.".to_string();
+            if let FormState::RegisterForm { password, confirm_password, .. } = &app.state {
+                if password == confirm_password {
+                    app.message = "Account created successfully!".to_string();
+                } else {
+                    app.message = "Passwords do not match. Try again.".to_string();
+                }
             }
         }
         KeyCode::Esc => {
-            // Navigate back to the main menu
+            app.set_main_menu();  // Navigate back to the main menu
             app.message = "Returning to main menu...".to_string();
-            // Reset any fields if needed
-            app.username.clear();
-            app.password.clear();
-            app.confirm_password.clear();
         }
         _ => {}
     }

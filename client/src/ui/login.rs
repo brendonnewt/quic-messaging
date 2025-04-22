@@ -90,11 +90,17 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             }
             Enter => {
+                use std::time::Duration;
+                use std::thread::sleep;
+
                 if username.is_empty() || password.is_empty() {
                     app.message = "Please fill both fields.".into();
                 } else if username == "admin" && password == "password" {
                     app.message = "Login successful!".into();
-                    app.set_main_menu(); // go back to the main menu
+                    app.username = username.clone(); // Store the temporary
+                    app.logged_in = true;
+
+                    app.set_main_menu();
                 } else {
                     app.message = "Invalid credentials.".into();
                 }

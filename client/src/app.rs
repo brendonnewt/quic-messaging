@@ -1,3 +1,5 @@
+use ratatui::widgets::ListState;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
     Username,
@@ -30,6 +32,9 @@ pub struct App {
     pub state: FormState,
     pub selected_index: usize,
     pub message: String,
+    pub logged_in: bool,
+    pub username: String, // Temporary username for login
+    pub list_state: ListState,
 }
 
 impl App {
@@ -38,6 +43,9 @@ impl App {
             state: FormState::MainMenu,
             selected_index: 0,
             message: String::new(),
+            logged_in: false,
+            username: "".to_string(),
+            list_state: ListState::default(),
         }
     }
 

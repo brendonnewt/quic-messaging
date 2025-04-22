@@ -24,7 +24,7 @@ package-lock.json
 .next
 
 # env files
-server/.env
+.env
 
 # Yarn files
 yarn-error.log

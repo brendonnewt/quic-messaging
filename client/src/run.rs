@@ -18,7 +18,8 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         // 1) Draw the appropriate UI for the current state
-        terminal.draw(|f| {
+        terminal
+            .draw(|f| {
             match &app.state {
                 FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
                 FormState::LoginForm { .. } => login::render::<CrosstermBackend<Stdout>>(f, app),
@@ -41,36 +42,8 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 // Login form input
-                FormState::LoginForm { username, password, active_field } => {
-                    match key.code {
-                        KeyCode::Enter | KeyCode::Char('\r') => {
-                            if *username == "admin" && *password == "password" {
-                                // on success, go to the user menu
-                                app.set_user_menu();
-                            } else {
-                                app.message = "Invalid username or password.".into();
-                            }
-                        }
-                        KeyCode::Esc => {
-                            app.set_main_menu();
-                        }
-                        KeyCode::Backspace => {
-                            if *active_field == ActiveField::Username && !username.is_empty() {
-                                username.pop();
-                            } else if *active_field == ActiveField::Password && !password.is_empty() {
-                                password.pop();
-                            }
-                        }
-                        KeyCode::Tab => {
-                            let next = if *active_field == ActiveField::Username {
-                                ActiveField::Password
-                            } else {
-                                ActiveField::Username
-                            };
-                            app.set_active_field(next);
-                        }
-                        _ => {}
-                    }
+                FormState::LoginForm { .. } => {
+                    login::handle_input(app, key);
                 }
 
                 // Main menu navigation

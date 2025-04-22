@@ -1,10 +1,11 @@
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
     Username,
     Password,
     ConfirmPassword,
 }
 
+#[derive(Debug)]
 pub enum FormState {
     MainMenu,
     LoginForm {

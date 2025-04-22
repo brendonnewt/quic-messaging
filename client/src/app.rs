@@ -18,6 +18,10 @@ pub enum FormState {
         confirm_password: String,
         active_field: ActiveField,
     },
+    UserMenu {
+        selected_index: usize,
+    },
+
     Exit,
 }
 
@@ -79,6 +83,9 @@ impl App {
             FormState::RegisterForm { active_field, .. } => *active_field = field,
             _ => {}
         }
+    }
+    pub fn set_user_menu(&mut self) {
+        self.state = FormState::UserMenu { selected_index: 0 };
     }
 }
 

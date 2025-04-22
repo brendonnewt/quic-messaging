@@ -5,63 +5,56 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::io::{self, stdout};
-use std::time::Duration;
-use std::io::Stdout;
+use std::io::{self, Stdout};
 use crate::app::ActiveField;
-use crate::ui::registration;
-use crate::ui::login; // <-- Import the login module
-use crate::ui::registration::handle_input;
+use crate::ui::{registration, login, user_menu};
 
 pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
-    // Set up the terminal with the correct backend
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    // Enter alternate screen for better terminal UI
     enable_raw_mode()?;
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
 
     loop {
+        // 1) Draw the appropriate UI for the current state
         terminal.draw(|f| {
             match &app.state {
                 FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::LoginForm { .. } => ui::login::render::<CrosstermBackend<Stdout>>(f, app), // <-- Handle Login UI
-                FormState::RegisterForm { .. } => ui::registration::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::Exit => return, // Exit if we reach this state
+                FormState::LoginForm { .. } => login::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::RegisterForm { .. } => registration::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::UserMenu { .. } => user_menu::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::Exit => return, // stops drawing, we’ll break below
             }
         })?;
 
-        // Break loop on Exit
         if matches!(app.state, FormState::Exit) {
             break;
         }
 
-        // Handle key events
+        // 2) Poll for a key event
         if let Some(key) = event::poll_event()? {
             match &mut app.state {
+                // Registration form input
                 FormState::RegisterForm { .. } => {
-                    handle_input(app, key); // Handle input for registration form
-                    terminal.draw(|f| registration::render::<CrosstermBackend<Stdout>>(f, &app))?;
+                    registration::handle_input(app, key);
                 }
+
+                // Login form input
                 FormState::LoginForm { username, password, active_field } => {
                     match key.code {
                         KeyCode::Enter | KeyCode::Char('\r') => {
-                            // Handle login logic here (e.g., validate credentials)
                             if *username == "admin" && *password == "password" {
-                                // If login is successful, go to main menu or next state
-                                app.state = FormState::MainMenu;
+                                // on success, go to the user menu
+                                app.set_user_menu();
                             } else {
-                                // If login fails, show error message
-                                app.message = String::from("Invalid username or password.");
+                                app.message = "Invalid username or password.".into();
                             }
                         }
                         KeyCode::Esc => {
-                            // If Esc is pressed, go back to the main menu
-                            app.state = FormState::MainMenu;
+                            app.set_main_menu();
                         }
                         KeyCode::Backspace => {
-                            // Handle backspace (remove last character) for username/password input
                             if *active_field == ActiveField::Username && !username.is_empty() {
                                 username.pop();
                             } else if *active_field == ActiveField::Password && !password.is_empty() {
@@ -69,17 +62,18 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                         KeyCode::Tab => {
-                            // Switch active field between username and password
-                            if *active_field == ActiveField::Username {
-                                app.set_active_field(ActiveField::Password);
+                            let next = if *active_field == ActiveField::Username {
+                                ActiveField::Password
                             } else {
-                                app.set_active_field(ActiveField::Username);
-                            }
+                                ActiveField::Username
+                            };
+                            app.set_active_field(next);
                         }
                         _ => {}
                     }
-                    terminal.draw(|f| login::render::<CrosstermBackend<Stdout>>(f, app))?;
                 }
+
+                // Main menu navigation
                 FormState::MainMenu => match key.code {
                     KeyCode::Up => {
                         if app.selected_index > 0 {
@@ -92,30 +86,50 @@ pub fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                     KeyCode::Enter | KeyCode::Char('\r') => match app.selected_index {
-                        0 => app.state = FormState::LoginForm {
-                            username: String::new(),
-                            password: String::new(),
-                            active_field: ActiveField::Username,
-                        },
-                        1 => app.state = FormState::RegisterForm {
-                            username: String::new(),
-                            password: String::new(),
-                            confirm_password: String::new(),
-                            active_field: ActiveField::Username,
-                        },
-                        2 => app.state = FormState::Exit,
+                        0 => app.set_login_form(),
+                        1 => app.set_register_form(),
+                        2 => app.set_exit(),
                         _ => {}
                     },
                     _ => {}
                 },
+
+                // User menu navigation (post-login)
+                FormState::UserMenu { selected_index } => match key.code {
+                    KeyCode::Up => {
+                        if *selected_index > 0 {
+                            *selected_index -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if *selected_index + 1 < 6 {
+                            *selected_index += 1;
+                        }
+                    }
+                    KeyCode::Enter | KeyCode::Char('\r') => {
+                        match *selected_index {
+                            0 => {/* Chats */},
+                            1 => {/* Chatroom */},
+                            2 => {/* Add Friends */},
+                            3 => {/* Friend List */},
+                            4 => {/* Settings */},
+                            5 => app.set_main_menu(), // Log Out -> back to main menu
+                            _ => {}
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.set_main_menu();
+                    }
+                    _ => {}
+                },
+
+                // Any other state: do nothing
                 _ => {}
             }
         }
     }
 
-    // Exit from raw mode and restore the screen
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-
     Ok(())
 }

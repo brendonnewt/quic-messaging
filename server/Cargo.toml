@@ -16,10 +16,15 @@ sha256 = "1.5.0"
 strum = "0.27.1"
 strum_macros = "0.27.1"
 tokio = { version = "1.42.0", features = ["full"] } # Async runtime compatible with Actix and SeaORM
-quinn = "0.11.7"
+quinn = "0.10"
 dashmap = "6.1.0"
 thiserror = "2.0.12"
 argon2 = "0.5.3"
+tracing-subscriber = "0.3.19"
+tracing = "0.1.41"
+rcgen = "0.11"
+rustls = { version = "0.21" }
+dotenvy = "0.15"
 [[bin]]
 name = "server"
 path = "src/main.rs"

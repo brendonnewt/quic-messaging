@@ -1,38 +1,66 @@
+use crate::handlers::repositories::user_repository;
+use crate::utils;
+use sea_orm::DatabaseConnection;
 use std::sync::Arc;
-use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter, ColumnTrait, Set, ActiveModelTrait, NotSet};
-use crate::{entity, utils};
 use utils::errors::server_error::ServerError;
-use crate::utils::json_models::auth_models::AuthResponseModel;
-use crate::utils::jwt;
+use utils::json_models::auth_models::AuthResponseModel;
+use utils::jwt;
 
 pub async fn register(
     username: String,
-    encrypted_password: String,
+    password: String,
     db: Arc<DatabaseConnection>,
 ) -> Result<AuthResponseModel, ServerError> {
     // Check if the username is already in use
-    let existing_user = entity::users::Entity::find().filter(entity::users::Column::Username.eq(username.clone())).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    let existing_user = user_repository::get_user_by_username(username.clone(), db.clone()).await?;
     if let Some(_) = existing_user {
         return Err(ServerError::UserAlreadyExists);
     }
 
-    // Create a new user
-    let new_user = entity::users::ActiveModel {
-        id: NotSet,
-        username: Set(username),
-        password_hash: Set(encrypted_password),
-    };
+    let hashed = utils::security::hash_password(password.as_str())?;
 
-    // Save the user to DB
-    let mut user = new_user.save(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    // Register the user in the database
+    let mut user = user_repository::register_user(username, hashed, db.clone()).await?;
 
     // Generate a response
     if let Some(user_id) = user.id.take() {
         // Create a token
-        let token = jwt::encode_jwt(user_id).map_err(|err| ServerError::JWTCreationError(err.into()))?;
-        return Ok(AuthResponseModel { success: true, token })
+        let token =
+            jwt::encode_jwt(user_id).map_err(|err| ServerError::JWTCreationError(err.into()))?;
+        return Ok(AuthResponseModel {
+            success: true,
+            token,
+        });
     }
 
     // If we make it here, there's a problem generating the token
-    Err(ServerError::JWTCreationError(jwt::CreationError::Unexpected))
+    Err(ServerError::JWTCreationError(
+        jwt::CreationError::Unexpected,
+    ))
+}
+
+pub async fn login(
+    username: String,
+    password: String,
+    db: Arc<DatabaseConnection>,
+) -> Result<AuthResponseModel, ServerError> {
+    // Find the user
+    let user = user_repository::get_user_by_username(username.clone(), db.clone()).await?;
+
+    // If a user is found, verify the password
+    if let Some(user) = user {
+        return if utils::security::verify_password(password.as_str(), user.password_hash.as_str())?
+        {
+            let token = jwt::encode_jwt(user.id)
+                .map_err(|err| ServerError::JWTCreationError(err.into()))?;
+            Ok(AuthResponseModel {
+                success: true,
+                token,
+            })
+        } else {
+            Err(ServerError::UserNotFound)
+        };
+    }
+
+    Err(ServerError::UserNotFound)
 }

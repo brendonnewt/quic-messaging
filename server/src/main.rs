@@ -1,6 +1,6 @@
-mod utils;
-mod entity;
-mod handlers;
+pub mod utils;
+pub mod entity;
+pub mod handlers;
 
 use quinn::{Endpoint, Incoming};
 use tokio::sync::mpsc;
@@ -17,7 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db: DatabaseConnection = sea_orm::Database::connect(&db_url).await?;
     let db_arc = Arc::new(db);
     
-    let response = handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    
+    let response = handlers::controllers::auth_controller::login("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    
     
     println!("Response: {:?}", response);
 

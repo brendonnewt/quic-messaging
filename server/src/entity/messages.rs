@@ -7,11 +7,12 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub chat_id: Option<i32>,
-    pub sender_id: Option<i32>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub content: Option<String>,
-    pub timestamp: Option<DateTime>,
+    pub chat_id: i32,
+    pub sender_id: i32,
+    #[sea_orm(column_type = "Text")]
+    pub content: String,
+    pub read: i8,
+    pub timestamp: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -24,6 +25,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Chats,
+    #[sea_orm(has_many = "super::message_reads::Entity")]
+    MessageReads,
     #[sea_orm(
         belongs_to = "super::users::Entity",
         from = "Column::SenderId",
@@ -40,9 +43,18 @@ impl Related<super::chats::Entity> for Entity {
     }
 }
 
+impl Related<super::message_reads::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MessageReads.def()
+    }
+}
+
 impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Users.def()
+        super::message_reads::Relation::Users.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::message_reads::Relation::Messages.def().rev())
     }
 }
 

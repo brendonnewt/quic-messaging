@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.39"
 dotenv = "0.15.0" # For loading environment variables
-sea-orm = { version = "1.1.10", features = ["sqlx-mysql", "runtime-tokio-native-tls"] }
+sea-orm = { version = "1.1.10", features = ["sqlx-mysql", "sqlx-sqlite", "runtime-tokio-native-tls"] }
 env_logger = "0.11.6" # For logging
 jsonwebtoken = "9.3.0"
 lazy_static = "1.5.0" # For setting up constants
@@ -19,6 +19,7 @@ tokio = { version = "1.42.0", features = ["full"] } # Async runtime compatible w
 quinn = "0.11.7"
 dashmap = "6.1.0"
 thiserror = "2.0.12"
+argon2 = "0.5.3"
 [[bin]]
 name = "server"
 path = "src/main.rs"

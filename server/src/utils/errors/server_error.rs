@@ -14,9 +14,18 @@ pub enum ServerError {
     #[error("User not found")]
     UserNotFound,
     
-    #[error("Token expired")]
-    TokenExpired,
+    #[error("Action blocked")]
+    ActionBlocked,
+    
+    #[error("Action forbidden")]
+    Forbidden,
+    
+    #[error("Invalid Token: {0}")]
+    InvalidToken(String),
 
     #[error("JWT creation error: {0}")]
     JWTCreationError(#[from] CreationError),
+
+    #[error("Invalid Password: {0}")]
+    PasswordInvalid(String),
 }

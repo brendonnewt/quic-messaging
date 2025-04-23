@@ -1,10 +1,20 @@
+
+
+mod ui;
+mod app;
+mod event;
+mod run;
+
+use crate::app::App;
+use run::run_app;
+
 use futures::StreamExt;
 use std::error::Error;
 use std::net::Ipv4Addr;
 use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::Arc;
-use tcp::manager::Manager;
+//use tcp::manager::Manager;
 use tokio::io;
 use tokio::sync::Mutex;
 use tokio_tun::Tun;
@@ -12,8 +22,11 @@ use tokio::sync::mpsc;
 use tokio_util::codec::{FramedRead, LinesCodec};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-
+async fn main()  -> Result<(), Box<dyn Error>>{
+    let mut app = App::new();
+    run_app(&mut app)?;
+    Ok(())
+/*
     tokio::spawn(async move {
         packet_listener(tun, manager, closed_flag).await.unwrap();
     });
@@ -134,4 +147,6 @@ async fn packet_listener(
             }
         }
     }
+
+ */
 }

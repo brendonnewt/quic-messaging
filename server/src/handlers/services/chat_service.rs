@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use chrono::Utc;
-use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter, ColumnTrait, Set, ActiveModelTrait, QueryOrder, PaginatorTrait, NotSet};
+use crate::entity;
+use crate::handlers::repositories::chat_repository;
+use crate::handlers::repositories::chat_repository::get_read_entry;
 use crate::utils::errors::server_error::ServerError;
 use crate::utils::json_models::server_models::ServerResponseModel;
 use crate::utils::jwt;
-use crate::entity;
-use sea_orm::sea_query::Expr;
+use sea_orm::DatabaseConnection;
+use std::sync::Arc;
 
 // Create a new chat (group or direct)
 pub async fn create_chat(
@@ -18,26 +18,17 @@ pub async fn create_chat(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let creator_id = claim.claims.user_id;
 
-    let new_chat = entity::chats::ActiveModel {
-        name: Set(name),
-        is_group: Set(is_group as i8),
-        created_at: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    };
-
-    let chat = new_chat.insert(&*db).await.map_err(ServerError::DatabaseError)?;
+    let chat = chat_repository::create_new_chat(name, is_group, db.clone()).await?;
 
     let mut members = member_ids;
     if !members.contains(&creator_id) {
         members.push(creator_id);
     }
 
+    let chat_id = chat.id;
+
     for uid in members {
-        let member = entity::chat_members::ActiveModel {
-            chat_id: Set(chat.id),
-            user_id: Set(uid),
-        };
-        member.insert(&*db).await.map_err(ServerError::DatabaseError)?;
+        chat_repository::add_chat_member(chat_id, uid, db.clone()).await?;
     }
 
     Ok(ServerResponseModel { success: true })
@@ -53,16 +44,7 @@ pub async fn send_message(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let sender_id = claim.claims.user_id;
 
-    let new_msg = entity::messages::ActiveModel {
-        chat_id: Set(chat_id),
-        sender_id: Set(sender_id),
-        content: Set(content),
-        read: Set(false as i8),
-        timestamp: Set(Utc::now().naive_utc()),
-        ..Default::default()
-    };
-
-    new_msg.insert(&*db).await.map_err(ServerError::DatabaseError)?;
+    chat_repository::send_message(chat_id, sender_id, content, db.clone()).await?;
     Ok(ServerResponseModel { success: true })
 }
 
@@ -78,27 +60,16 @@ pub async fn get_chat_messages(
     let user_id = claim.claims.user_id;
 
     // Confirm user is in chat
-    let is_member = entity::chat_members::Entity::find()
-        .filter(entity::chat_members::Column::ChatId.eq(chat_id))
-        .filter(entity::chat_members::Column::UserId.eq(user_id))
-        .one(&*db)
-        .await?
-        .is_some();
+    let is_member = chat_repository::is_user_chat_member(chat_id, user_id, db.clone()).await;
 
     if !is_member {
         return Err(ServerError::Forbidden);
     }
 
-    let paginator = entity::messages::Entity::find()
-        .filter(entity::messages::Column::ChatId.eq(chat_id))
-        .order_by_desc(entity::messages::Column::Timestamp)
-        .paginate(&*db, page_size);
-
-    let messages = paginator.fetch_page(page).await?;
-
+    let messages =
+        chat_repository::get_paginated_messages(chat_id, page, page_size, db.clone()).await?;
     Ok(messages)
 }
-
 
 // Mark messages as read (per-user tracking)
 pub async fn mark_messages_read(
@@ -109,38 +80,32 @@ pub async fn mark_messages_read(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let user_id = claim.claims.user_id;
 
-    let is_member = entity::chat_members::Entity::find()
-        .filter(entity::chat_members::Column::ChatId.eq(chat_id))
-        .filter(entity::chat_members::Column::UserId.eq(user_id))
-        .one(&*db)
-        .await?
-        .is_some();
-
+    let is_member = chat_repository::is_user_chat_member(chat_id, user_id, db.clone()).await;
     if !is_member {
         return Err(ServerError::Forbidden);
     }
 
-    let unread_messages = entity::messages::Entity::find()
-        .filter(entity::messages::Column::ChatId.eq(chat_id))
-        .all(&*db)
-        .await?;
+    // Get all message IDs for a chat
+    let message_ids: Vec<i32> = chat_repository::get_chat_message_ids(chat_id, db.clone()).await?;
 
-    for msg in unread_messages {
-        let existing = entity::message_reads::Entity::find()
-            .filter(entity::message_reads::Column::MessageId.eq(msg.id))
-            .filter(entity::message_reads::Column::UserId.eq(user_id))
-            .one(&*db)
+    // If none, all are read
+    if message_ids.is_empty() {
+        return Ok(ServerResponseModel { success: true });
+    }
+
+    // Get already read message_ids for this user
+    let read_ids: Vec<i32> =
+        chat_repository::get_user_chat_unread_messages(user_id, message_ids.clone(), db.clone())
             .await?;
 
-        if existing.is_none() {
-            let read = entity::message_reads::ActiveModel {
-                message_id: Set(msg.id),
-                user_id: Set(user_id),
-                read_at: Set(Utc::now().naive_utc()),
-            };
-            read.insert(&*db).await?;
-        }
-    }
+    // Compute unread message_ids
+    let unread_ids: Vec<i32> = message_ids
+        .into_iter()
+        .filter(|id| !read_ids.contains(id))
+        .collect();
+
+    // Bulk insert the missing reads
+    chat_repository::mark_messages_read(user_id, unread_ids, db.clone()).await?;
 
     Ok(ServerResponseModel { success: true })
 }
@@ -154,24 +119,18 @@ pub async fn get_unread_message_count(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let user_id = claim.claims.user_id;
 
-    let total_messages = entity::messages::Entity::find()
-        .filter(entity::messages::Column::ChatId.eq(chat_id))
-        .all(&*db)
-        .await?;
+    let messages = chat_repository::get_chat_messages(chat_id, db.clone()).await?;
 
     let mut unread_count = 0;
-    for msg in total_messages {
-        let read_entry = entity::message_reads::Entity::find()
-            .filter(entity::message_reads::Column::MessageId.eq(msg.id))
-            .filter(entity::message_reads::Column::UserId.eq(user_id))
-            .one(&*db)
-            .await?;
+    for msg in messages {
+        let read_entry = get_read_entry(user_id, msg.id, db.clone()).await?;
 
-        if read_entry.is_none() {
-            unread_count += 1;
+        if read_entry.is_some() {
+            break; // Stop counting once the first read message is found
         }
+
+        unread_count += 1;
     }
 
     Ok(unread_count)
 }
-

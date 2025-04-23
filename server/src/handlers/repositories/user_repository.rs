@@ -4,8 +4,6 @@ use sea_orm::sea_query::Expr;
 use crate::{entity, utils};
 use utils::errors::server_error::ServerError;
 use crate::entity::sea_orm_active_enums::Status;
-use crate::entity::users::Model;
-use crate::utils::json_models::auth_models::AuthResponseModel;
 
 pub async fn register_user(username: String, hashed: String, db: Arc<DatabaseConnection>) -> Result<entity::users::ActiveModel, ServerError> {
     // Create a new user
@@ -19,11 +17,11 @@ pub async fn register_user(username: String, hashed: String, db: Arc<DatabaseCon
     new_user.save(&*db).await.map_err(|err| ServerError::DatabaseError(err))
 }
 
-pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<Option<Model>, ServerError> {
+pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<Option<entity::users::Model>, ServerError> {
     entity::users::Entity::find().filter(entity::users::Column::Username.eq(username.clone())).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))
 }
 
-pub async fn get_user_by_id(id: i32, db: Arc<DatabaseConnection>) -> Result<Option<Model>, ServerError> {
+pub async fn get_user_by_id(id: i32, db: Arc<DatabaseConnection>) -> Result<Option<entity::users::Model>, ServerError> {
     entity::users::Entity::find().filter(entity::users::Column::Id.eq(id)).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))
 }
 
@@ -76,4 +74,80 @@ pub async fn get_user_blocked(sender_id: i32, receiver_id: i32, db: Arc<Database
         )
         .one(&*db)
         .await.map_err(|err| ServerError::DatabaseError(err))
+}
+
+pub async fn block_user(user_id: i32, blocked_id: i32, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {
+    let new_block = entity::blocked_users::ActiveModel {
+        user_id: Set(user_id),
+        blocked_id: Set(blocked_id),
+    };
+
+    new_block.insert(&*db).await.map_err(ServerError::DatabaseError)?;
+
+    Ok(())
+}
+
+pub async fn delete_friendship(u1: i32, u2: i32, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {
+    entity::friends::Entity::delete_many()
+        .filter(
+            Condition::any()
+                .add(entity::friends::Column::UserId.eq(u1).and(entity::friends::Column::FriendId.eq(u2)))
+                .add(entity::friends::Column::UserId.eq(u2).and(entity::friends::Column::FriendId.eq(u1)))
+        )
+        .exec(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    Ok(())
+}
+
+pub async fn delete_friend_requests(u1: i32, u2: i32, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {
+    entity::friend_requests::Entity::delete_many()
+        .filter(
+            Condition::any()
+                .add(entity::friend_requests::Column::SenderId.eq(u1).and(entity::friend_requests::Column::ReceiverId.eq(u2)))
+                .add(entity::friend_requests::Column::SenderId.eq(u2).and(entity::friend_requests::Column::ReceiverId.eq(u1)))
+        )
+        .exec(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    Ok(())
+}
+
+pub async fn get_user_friends(user_id: i32, db: Arc<DatabaseConnection>) -> Result<Vec<entity::friends::Model>, ServerError> {
+    let friends: Vec<entity::friends::Model> = entity::friends::Entity::find().filter(entity::friends::Column::UserId.eq(user_id)).all(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    Ok(friends)
+}
+
+pub async fn get_users_from_list(ids: Vec<i32>, db: Arc<DatabaseConnection>) -> Result<Vec<entity::users::Model>, ServerError> {
+    let users: Vec<entity::users::Model> = entity::users::Entity::find().filter(entity::users::Column::Id.is_in(ids)).all(&*db).await.map_err(|err| ServerError::DatabaseError(err))?;
+    Ok(users)
+}
+
+pub async fn get_user_friend_requests(user_id: i32, direction: Option<entity::friend_requests::Column>, db: Arc<DatabaseConnection>) -> Result<Vec<entity::friend_requests::Model>, ServerError> {
+    if let Some(direction) = direction {
+        let requests: Vec<entity::friend_requests::Model> = entity::friend_requests::Entity::find()
+            .filter(direction.eq(user_id))
+            .filter(entity::friend_requests::Column::Status.eq(Status::Pending))
+            .all(&*db)
+            .await?;
+        return Ok(requests);
+    }
+
+    let incoming: Vec<entity::friend_requests::Model> = entity::friend_requests::Entity::find()
+        .filter(entity::friend_requests::Column::ReceiverId.eq(user_id))
+        .filter(entity::friend_requests::Column::Status.eq(Status::Pending))
+        .all(&*db)
+        .await?;
+
+    let outgoing: Vec<entity::friend_requests::Model> = entity::friend_requests::Entity::find()
+        .filter(entity::friend_requests::Column::SenderId.eq(user_id))
+        .filter(entity::friend_requests::Column::Status.eq(Status::Pending))
+        .all(&*db)
+        .await?;
+
+    let requests = incoming.into_iter().chain(outgoing.into_iter()).collect();
+
+    Ok(requests)
 }

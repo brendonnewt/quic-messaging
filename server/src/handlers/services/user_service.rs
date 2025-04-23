@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use sea_orm::{DatabaseConnection, EntityTrait, QueryFilter, ColumnTrait, Set, ActiveModelTrait, Condition};
-use sea_orm::sea_query::Expr;
 use crate::{entity, utils};
 use utils::errors::server_error::ServerError;
 use crate::entity::sea_orm_active_enums::Status;
 use crate::utils::json_models::server_models::ServerResponseModel;
 use crate::utils::json_models::user_models::{FriendRequestList, User, UserList};
 use crate::utils::jwt;
+use crate::handlers::repositories::user_repository;
 
 pub async fn get_info(
     jwt: String,
@@ -18,7 +18,7 @@ pub async fn get_info(
         Err(e) => return Err(ServerError::InvalidToken(e.to_string())),
     };
     // Get the user by their id from the jwt
-    let user = utils::db::getters::get_user_by_id(claim.claims.user_id, db).await?;
+    let user = user_repository::get_user_by_id(claim.claims.user_id, db).await?;
 
     // If a user is found, return their info
     match user {
@@ -41,27 +41,15 @@ pub async fn send_friend_request(
     let sender_id = claim.claims.user_id;
 
     // Check if either user has blocked the other
-    let blocked = entity::blocked_users::Entity::find()
-        .filter(
-            Condition::any()
-                .add(entity::blocked_users::Column::UserId.eq(sender_id).and(entity::blocked_users::Column::BlockedId.eq(receiver_id)))
-                .add(entity::blocked_users::Column::UserId.eq(receiver_id).and(entity::blocked_users::Column::BlockedId.eq(sender_id)))
-        )
-        .one(&*db)
-        .await?;
+    let blocked = user_repository::get_user_blocked(sender_id, receiver_id, db.clone()).await?;
 
     if blocked.is_some() {
         return Err(ServerError::ActionBlocked);
     }
 
-    let new_request = entity::friend_requests::ActiveModel {
-        sender_id: Set(sender_id),
-        receiver_id: Set(receiver_id),
-        status: Set(Status::Pending),
-        ..Default::default()
-    };
+    // Send friend request through the database
+    user_repository::send_friend_request(sender_id, receiver_id, db.clone()).await?;
 
-    new_request.insert(&*db).await.map_err(ServerError::DatabaseError)?;
     Ok(ServerResponseModel { success: true })
 }
 
@@ -74,20 +62,11 @@ pub async fn accept_friend_request(
     let receiver_id = claim.claims.user_id;
 
     // Update request to accept
-    entity::friend_requests::Entity::update_many()
-        .col_expr(entity::friend_requests::Column::Status, Expr::value(Status::Accepted))
-        .filter(entity::friend_requests::Column::SenderId.eq(sender_id))
-        .filter(entity::friend_requests::Column::ReceiverId.eq(receiver_id))
-        .exec(&*db)
-        .await?;
+    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Accepted, db.clone()).await?;
 
     // Create mutual friendships
     for (u1, u2) in [(sender_id, receiver_id), (receiver_id, sender_id)] {
-        let friendship = entity::friends::ActiveModel {
-            user_id: Set(u1),
-            friend_id: Set(u2),
-        };
-        friendship.insert(&*db).await?;
+        user_repository::create_friendship(u1, u2, db.clone()).await?;
     }
 
     Ok(ServerResponseModel { success: true })
@@ -101,11 +80,8 @@ pub async fn decline_friend_request(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let receiver_id = claim.claims.user_id;
 
-    entity::friend_requests::Entity::delete_many()
-        .filter(entity::friend_requests::Column::SenderId.eq(sender_id))
-        .filter(entity::friend_requests::Column::ReceiverId.eq(receiver_id))
-        .exec(&*db)
-        .await?;
+    // Mark request as rejected and delete it
+    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Rejected, db.clone()).await?;
 
     Ok(ServerResponseModel { success: true })
 }
@@ -229,7 +205,7 @@ pub async fn block_user(
 
 pub async fn get_friends(jwt: String, db: Arc<DatabaseConnection>) -> Result<UserList, ServerError> {
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
-    let user =  utils::db::getters::get_user_by_id(claim.claims.user_id, db.clone()).await?;
+    let user =  user_repository::get_user_by_id(claim.claims.user_id, db.clone()).await?;
     if let Some(user) = user {
         // Get user friends and collect them into a vector
         let friends = entity::friends::Entity::find().filter(entity::friends::Column::UserId.eq(user.id)).all(&*db).await?;

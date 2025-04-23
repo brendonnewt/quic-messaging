@@ -15,6 +15,7 @@ RUN cargo build --release
 
 # Use a minimal base image for the final image
 FROM debian:bookworm-slim
+
 # Install necessary dependencies
 RUN apt-get update
 

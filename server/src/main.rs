@@ -2,6 +2,7 @@ pub mod utils;
 pub mod entity;
 pub mod handlers;
 
+use shared::client_response::ClientRequest;
 use sea_orm::DatabaseConnection;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;

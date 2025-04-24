@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+shared = { path = "../shared" }
 # Async runtime
 tokio = { version = "1.38.0", features = ["full"] }
 

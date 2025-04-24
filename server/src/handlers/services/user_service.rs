@@ -86,6 +86,24 @@ pub async fn decline_friend_request(
     Ok(ServerResponseModel { success: true })
 }
 
+pub async fn cancel_friend_request(jwt: String, receiver_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
+    let sender_id = claim.claims.user_id;
+
+    // Check if either user has blocked the other
+    let blocked = user_repository::get_user_blocked(sender_id, receiver_id, db.clone()).await?;
+
+    if blocked.is_some() {
+        return Err(ServerError::ActionBlocked);
+    }
+
+    // Delete friend request through the database
+    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Rejected, db.clone()).await?;
+
+    Ok(ServerResponseModel { success: true })
+
+}
+
 pub async fn get_friend_requests(
     jwt: String,
     db: Arc<DatabaseConnection>,

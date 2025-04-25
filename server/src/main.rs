@@ -2,7 +2,7 @@ pub mod utils;
 pub mod entity;
 pub mod handlers;
 
-use shared::client_response::ClientRequest;
+use shared::client_response::{ClientRequest, Command, ServerResponse};
 use sea_orm::DatabaseConnection;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;
@@ -11,6 +11,7 @@ use quinn::Endpoint;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::info;
 use tracing_subscriber;
+use crate::handlers::controllers::auth_controller;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,26 +49,77 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
             info!("New connection from {}", connection.remote_address());
 
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
+                let db = db.clone();
                 tokio::spawn(async move {
-                    let mut buf = vec![0; 1024];
-                    match recv.read(&mut buf).await {
-                        Ok(Some(n)) => {
-                            let msg = String::from_utf8_lossy(&buf[..n]);
-                            info!("Received: {}", msg);
-
-                            // Echo the message back to the client
-                            if let Err(e) = send.write_all(msg.as_bytes()).await {
-                                eprintln!("Failed to send response: {:?}", e);
-                            }
-                            let _ = send.finish().await;
-                        }
-                        Ok(None) => {
-                            info!("Client closed the stream");
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to read from stream: {:?}", e);
-                        }
+                    let mut buf = Vec::new();
+                    while let Ok(Some(n)) = recv.read_buf(&mut buf).await {
+                        if n == 0 {break;}
                     }
+
+                    let req: ClientRequest = match serde_json::from_slice(&buf) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            let response = ServerResponse {
+                                jwt: None,
+                                success: false,
+                                message: Some(format!("Invalid JSON: {}", e)),
+                                data: None,
+                            };
+                            let _ = send.write_all(response.to_string().as_bytes()).await;
+                            let _ = send.finish().await;
+                            return;
+                        }
+                    };
+
+                    let response = match req.command {
+                        Command::Register {username, password} => {
+                            match auth_controller::register(username, password, db).await {
+                                Ok(response_model) => ServerResponse {
+                                    jwt: Some(response_model.token),
+                                    success: true,
+                                    message: Some("Registered".into()),
+                                    data: None,
+                                },
+                                Err(e) => ServerResponse {
+                                    jwt: None,
+                                    success: false,
+                                    message: Some(e.to_string()),
+                                    data: None,
+                                },
+                            }
+                        }
+                        Command::Login {username, password} => {
+                            match auth_controller::login(username, password, db).await {
+                                Ok(response_model) => ServerResponse {
+                                    jwt: Some(response_model.token),
+                                    success: true,
+                                    message: Some("Logged In".into()),
+                                    data: None,
+                                },
+                                Err(e) => ServerResponse{
+                                    jwt: None,
+                                    success: false,
+                                    message: Some(e.to_string()),
+                                    data: None,
+                                }
+                            }
+                        }
+                        other => {
+                            // Shouldn't be possible, but covering the case.
+                            ServerResponse {
+                                jwt: None,
+                                success: false,
+                                message: Some(format!("Unsupported Command: {:?}", other)),
+                                data: None,
+                            }
+                        }
+                    };
+
+                    let bytes = serde_json::to_vec(&response).unwrap();
+                    if let Err(e) = send.write_all(&bytes).await {
+                        eprintln!("Failed to send response: {}", e);
+                    }
+                    let _ = send.finish().await;
                 });
             }
 

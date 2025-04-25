@@ -11,7 +11,7 @@ pub struct ServerResponse {
     pub jwt: Option<String>,
     pub success: bool,
     pub message: Option<String>,
-    pub data: serde_json::Value,
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

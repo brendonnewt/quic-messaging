@@ -122,7 +122,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                     if let Err(e) = send.write_all(&bytes).await {
                         eprintln!("Failed to send response: {}", e);
                     }
-                    // Close send_half of bi-directional stream in preparation for new stream
+                    // Close send_half of bidirectional stream in preparation for new stream
                     let _ = send.finish().await;
                 });
             }

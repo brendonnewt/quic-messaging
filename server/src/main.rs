@@ -56,6 +56,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                         if n == 0 {break;}
                     }
 
+                    // Deserialize ClientRequest
                     let req: ClientRequest = match serde_json::from_slice(&buf) {
                         Ok(r) => r,
                         Err(e) => {
@@ -71,6 +72,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                         }
                     };
 
+                    // Determine ClientRequest and compile proper response
                     let response = match req.command {
                         Command::Register {username, password} => {
                             match auth_controller::register(username, password, db).await {
@@ -115,10 +117,12 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                         }
                     };
 
-                    let bytes = serde_json::to_vec(&response).unwrap();
+                    // Send response
+                    let bytes = serde_json::to_vec(&response).expect("Failed to serialize response");
                     if let Err(e) = send.write_all(&bytes).await {
                         eprintln!("Failed to send response: {}", e);
                     }
+                    // Close send_half of bi-directional stream in preparation for new stream
                     let _ = send.finish().await;
                 });
             }

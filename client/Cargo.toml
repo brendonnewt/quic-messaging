@@ -9,7 +9,6 @@ shared = { path = "../shared" }
 tokio = { version = "1.38.0", features = ["full"] }
 
 # TUN device abstraction for tokio
-tokio-tun = "0.9.0"
 
 # Utilities for tokio (codecs, etc.)
 tokio-util = { version = "0.7.10", features = ["full"] }

@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("Response: {:?}", response);
 
-    let addr: SocketAddr = "127.0.0.1:8080".parse()?;
+    let addr: SocketAddr = "0.0.0.0:8080".parse()?;
     let mut endpoint = Endpoint::server(utils::cert::generate_self_signed_cert(), addr)?;
 
     info!("Server listening on {}", addr);

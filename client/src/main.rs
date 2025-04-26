@@ -11,13 +11,11 @@ use run::run_app;
 use futures::StreamExt;
 use std::error::Error;
 use std::net::Ipv4Addr;
-use std::os::fd::AsRawFd;
 use std::str::FromStr;
 use std::sync::Arc;
 //use tcp::manager::Manager;
 use tokio::io;
 use tokio::sync::Mutex;
-use tokio_tun::Tun;
 use tokio::sync::mpsc;
 use tokio_util::codec::{FramedRead, LinesCodec};
 

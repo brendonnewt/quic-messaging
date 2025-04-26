@@ -1,5 +1,3 @@
-
-
 mod ui;
 mod app;
 mod event;
@@ -9,20 +7,60 @@ use crate::app::App;
 use run::run_app;
 
 use futures::StreamExt;
+use quinn::{ClientConfig, Endpoint, TransportConfig};
+use rustls::client::{ClientConfig as RustlsClientConfig, ServerCertVerified, ServerCertVerifier};
 use std::error::Error;
-use std::net::Ipv4Addr;
+use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-//use tcp::manager::Manager;
-use tokio::io;
-use tokio::sync::Mutex;
-use tokio::sync::mpsc;
-use tokio_util::codec::{FramedRead, LinesCodec};
+use std::time::{Duration, SystemTime};
+use tracing_subscriber::prelude::*;
+
+struct TestVerifier;
+impl ServerCertVerifier for TestVerifier {
+    fn verify_server_cert(
+        &self,
+        _: &rustls::Certificate,
+        _: &[rustls::Certificate],
+        _: &rustls::ServerName,
+        _: &mut dyn Iterator<Item = &[u8]>,
+        _: &[u8],
+        _: SystemTime,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        Ok(ServerCertVerified::assertion())
+    }
+}
 
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
+
+
+    // QUIC Client
+    let rustls_cfg = RustlsClientConfig::builder().with_safe_defaults().with_custom_certificate_verifier(Arc::new(TestVerifier)).with_no_client_auth();
+    let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));
+
+    // now configure the QUIC transport:
+    let mut transport_config = TransportConfig::default();
+    transport_config.max_idle_timeout(
+        Some(Duration::from_secs(300)
+            .try_into()
+            .expect("valid idle timeout")),
+    );
+    transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
+
+    // attach it
+    client_cfg.transport_config( Arc::new(transport_config) );
+
+    // finally:
+    let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
+    endpoint.set_default_client_config(client_cfg);
+
+    let server_addr: SocketAddr = "192.168.56.1:8080".parse()?;
+    let new_conn = endpoint.connect(server_addr, "192.168.56.1")?.await?;
+    let conn = Arc::new(new_conn);
+
     let mut app = App::new();
-    run_app(&mut app)?;
+    run_app(&mut app, conn.clone()).await?;
     Ok(())
 /*
     tokio::spawn(async move {

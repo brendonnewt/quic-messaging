@@ -9,7 +9,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use quinn::Endpoint;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber;
 use crate::handlers::controllers::auth_controller;
 
@@ -51,30 +51,43 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 tokio::spawn(async move {
+                    info!("▶️  New RPC stream; waiting for request…");
                     let mut buf = Vec::new();
-                    while let Ok(Some(n)) = recv.read_buf(&mut buf).await {
-                        if n == 0 {break;}
+                    while let Ok(n) = recv.read_buf(&mut buf).await {
+                        info!("  📥 read_buf returned {} bytes", n);
+                        if n == 0 {
+                            info!("  📥 EOF on recv side");
+                            break;
+                        }
                     }
+
+                    info!("  📥 Full request buffer: {}", String::from_utf8_lossy(&buf));
+
 
                     // Deserialize ClientRequest
                     let req: ClientRequest = match serde_json::from_slice(&buf) {
                         Ok(r) => r,
                         Err(e) => {
+                            error!("  ❌ JSON parse error: {}", e);
                             let response = ServerResponse {
                                 jwt: None,
                                 success: false,
                                 message: Some(format!("Invalid JSON: {}", e)),
                                 data: None,
                             };
-                            let _ = send.write_all(response.to_string().as_bytes()).await;
+                            info!("  📤 Sending error response and FIN");
+                            let _ = send.write_all(serde_json::to_string(&response).unwrap().as_bytes()).await;
                             let _ = send.finish().await;
                             return;
                         }
                     };
 
+                    info!("  ⚙️  Dispatching command");
+
                     // Determine ClientRequest and compile proper response
                     let response = match req.command {
                         Command::Register {username, password} => {
+                            info!("   ↪️  Calling auth_controller::register");
                             match auth_controller::register(username, password, db).await {
                                 Ok(response_model) => ServerResponse {
                                     jwt: Some(response_model.token),
@@ -119,6 +132,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
 
                     // Send response
                     let bytes = serde_json::to_vec(&response).expect("Failed to serialize response");
+                    info!("  📤 Writing {} bytes response", bytes.len());
                     if let Err(e) = send.write_all(&bytes).await {
                         eprintln!("Failed to send response: {}", e);
                     }

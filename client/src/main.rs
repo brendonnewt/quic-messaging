@@ -2,6 +2,7 @@ mod ui;
 mod app;
 mod event;
 mod run;
+mod utils;
 
 use crate::app::App;
 use run::run_app;
@@ -33,8 +34,7 @@ impl ServerCertVerifier for TestVerifier {
 
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
-
-
+    let mut serv_addr = utils::constants::SERVER_ADDR.to_owned();
     // QUIC Client
     let rustls_cfg = RustlsClientConfig::builder().with_safe_defaults().with_custom_certificate_verifier(Arc::new(TestVerifier)).with_no_client_auth();
     let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));
@@ -55,8 +55,9 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
     endpoint.set_default_client_config(client_cfg);
 
-    let server_addr: SocketAddr = "192.168.56.1:8080".parse()?;
-    let new_conn = endpoint.connect(server_addr, "192.168.56.1")?.await?;
+    let port = format!("{}:{}", serv_addr, "8080");
+    let server_addr: SocketAddr = port.parse()?;
+    let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
     let conn = Arc::new(new_conn);
 
     let mut app = App::new();

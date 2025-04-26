@@ -55,7 +55,6 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                                 },
                             };
                             let bytes = serde_json::to_vec(&req)?;
-                            // --- logging added here ---
                             tracing::info!("[Client] Opening QUIC stream for Register");
                             let (mut send, mut recv) = conn.open_bi().await?;
                             tracing::info!("[Client] Sending {} bytes", bytes.len());
@@ -63,7 +62,6 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                             tracing::info!("[Client] Finishing send half");
                             send.finish().await?;
                             tracing::info!("[Client] Waiting for response…");
-                            // --- end logging ---
 
                             let resp_bytes = recv.read_to_end(usize::MAX).await?;
                             info!("[Client] Received {} bytes", resp_bytes.len());
@@ -81,8 +79,38 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                 }
 
                 // Login form input
-                FormState::LoginForm { .. } => {
-                    login::handle_input(app, key);
+                FormState::LoginForm { username, password, .. } => {
+                    match key.code{
+                        KeyCode::Enter => {
+                            let req = ClientRequest {
+                                jwt: None,
+                                command: Command::Login {
+                                    username: username.clone(),
+                                    password: password.clone(),
+                                },
+                            };
+                            let bytes = serde_json::to_vec(&req)?;
+                            tracing::info!("[Client] Opening QUIC stream for LogIN");
+                            let (mut send, mut recv) = conn.open_bi().await?;
+                            tracing::info!("[Client] Sending {} bytes", bytes.len());
+                            send.write_all(&bytes).await?;
+                            tracing::info!("[Client] Finishing send half");
+                            send.finish().await?;
+                            tracing::info!("[Client] Waiting for response…");
+
+                            let resp_bytes = recv.read_to_end(usize::MAX).await?;
+                            info!("[Client] Received {} bytes", resp_bytes.len());
+                            let response: ServerResponse = serde_json::from_slice(&resp_bytes)?;
+
+                            if response.success {
+                                app.message = "Logged In".into();
+                                app.set_user_menu();
+                            }else{
+                                app.message = response.message.unwrap_or("Log In failed".into());
+                            }
+                        }
+                        _ => ui::login::handle_input(app, key),
+                    }
                 }
 
                 // Main menu navigation

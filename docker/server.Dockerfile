@@ -23,4 +23,4 @@ WORKDIR /app
 COPY --from=builder /app/server/target/release/server /usr/local/bin/server
 
 # Run the application when the container starts
-CMD ["server"]
+CMD ["/usr/local/bin/server"]

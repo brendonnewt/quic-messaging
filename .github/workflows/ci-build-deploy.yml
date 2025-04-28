@@ -15,6 +15,12 @@ jobs:
         run: |
           docker image prune -af
 
+      - name: Set up env
+        run: |
+          echo "SECRET=${{ secrets.SECRET }}" >> $GITHUB_ENV
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
+
+
       - name: Build
         run: |
           docker compose -f docker/ci.docker-compose.yml build

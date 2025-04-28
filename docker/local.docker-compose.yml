@@ -11,6 +11,5 @@ services:
       MYSQL_DATABASE: messaging
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
 volumes:
   mysql-data:

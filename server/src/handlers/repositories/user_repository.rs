@@ -25,7 +25,34 @@ pub async fn get_user_by_id(id: i32, db: Arc<DatabaseConnection>) -> Result<Opti
     entity::users::Entity::find().filter(entity::users::Column::Id.eq(id)).one(&*db).await.map_err(|err| ServerError::DatabaseError(err))
 }
 
-pub async fn send_friend_request(sender_id: i32, receiver_id: i32, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {
+pub async fn send_friend_request(
+    sender_id: i32,
+    receiver_id: i32,
+    db: Arc<DatabaseConnection>,
+) -> Result<(), ServerError> {
+    // Check if this exact request already exists
+    if let Some(existing) = get_friend_request(sender_id, receiver_id, db.clone()).await? {
+        return Ok(())
+    }
+
+    // 2. Check for a reverse request
+    let reverse = get_friend_request(receiver_id, sender_id, db.clone()).await?;
+
+    if let Some(existing_request) = reverse {
+        // Accept the reverse request
+        let mut model: entity::friend_requests::ActiveModel = existing_request.into();
+        model.status = Set(Status::Accepted);
+        model.update(&*db).await?;
+
+        // Create mutual friendships
+        for (u1, u2) in [(sender_id, receiver_id), (receiver_id, sender_id)] {
+            create_friendship(u1, u2, db.clone()).await?;
+        }
+
+        return Ok(());
+    }
+
+    // No existing or reverse request, create a new one
     let new_request = entity::friend_requests::ActiveModel {
         sender_id: Set(sender_id),
         receiver_id: Set(receiver_id),
@@ -34,8 +61,19 @@ pub async fn send_friend_request(sender_id: i32, receiver_id: i32, db: Arc<Datab
     };
 
     new_request.insert(&*db).await.map_err(ServerError::DatabaseError)?;
+
     Ok(())
 }
+
+pub async fn get_friend_request(sender_id: i32, receiver_id: i32, db: Arc<DatabaseConnection>) -> Result<Option<entity::friend_requests::Model>, ServerError> {
+    Ok(entity::friend_requests::Entity::find()
+        .filter(entity::friend_requests::Column::SenderId.eq(sender_id))
+        .filter(entity::friend_requests::Column::ReceiverId.eq(receiver_id))
+        .filter(entity::friend_requests::Column::Status.eq(Status::Pending))
+        .one(&*db)
+        .await?)
+}
+
 
 pub async fn update_friend_request_status(sender_id: i32, receiver_id: i32, status: Status, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {
     if status == Status::Rejected {

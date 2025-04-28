@@ -17,12 +17,10 @@ jobs:
 
       - name: Build
         run: |
-          cd final-project-group2_s25
           docker compose -f docker/ci.docker-compose.yml build
 
       - name: Deploy
         run: |
-          cd final-project-group2_s25
           docker compose -f docker/ci.docker-compose.yml down
           docker compose -f docker/ci.docker-compose.yml up -d --build
 

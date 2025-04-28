@@ -17,12 +17,12 @@ jobs:
           docker image prune -af
 
       - name: Build
-        working-directory: final-project-group2
+        working-directory: final-project-group2_s25
         run: |
           docker compose -f docker/ci.docker-compose.yml build
 
       - name: Deploy
-        working-directory: final-project-group2
+        working-directory: final-project-group2_s25
         run: |
           docker compose -f docker/ci.docker-compose.yml down
           docker compose -f docker/ci.docker-compose.yml up -d --build

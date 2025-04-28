@@ -2,13 +2,10 @@
 FROM rust:latest AS builder
 
 # Set the working directory
-WORKDIR /app
-
-# Copy the Cargo.toml and Cargo.lock files
-COPY Cargo.toml ./
+WORKDIR /app/server
 
 # Copy over the project files
-COPY . ./
+COPY . .
 
 # Build the final application binary
 RUN cargo build --release
@@ -23,7 +20,7 @@ RUN apt-get update
 WORKDIR /app
 
 # Copy the compiled application binary from the builder stage
-COPY --from=builder /app/target/release/server /usr/local/bin/server
+COPY --from=builder /app/server/target/release/server /usr/local/bin/server
 
 # Run the application when the container starts
 CMD ["server"]

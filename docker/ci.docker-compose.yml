@@ -5,7 +5,7 @@ services:
   server:
     image: messaging-server
     build:
-      context: ../server
+      context: ../
       dockerfile: ../docker/server.Dockerfile
     restart: always
     ports:

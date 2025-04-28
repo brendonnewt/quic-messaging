@@ -19,7 +19,7 @@ RUN rustup target add x86_64-unknown-linux-musl
 
 # Build the server crate
 WORKDIR /app/server
-RUN cargo build --release --target x86_64-unknown-linux-musl
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin server
 
 FROM scratch
 

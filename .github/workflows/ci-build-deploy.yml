@@ -4,6 +4,7 @@ on:
       - main
 
 jobs:
+
   build-and-deploy:
     name: Build & Deploy to main
     runs-on: [self-hosted]
@@ -16,10 +17,12 @@ jobs:
           docker image prune -af
 
       - name: Build
+        working-directory: final-project-group2
         run: |
           docker compose -f docker/ci.docker-compose.yml build
 
       - name: Deploy
+        working-directory: final-project-group2
         run: |
           docker compose -f docker/ci.docker-compose.yml down
           docker compose -f docker/ci.docker-compose.yml up -d --build

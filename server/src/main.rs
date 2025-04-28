@@ -28,9 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     //handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
     
-    let response = handlers::controllers::auth_controller::login("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
+    //let response = handlers::controllers::auth_controller::login("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
     
-    println!("Response: {:?}", response);
+    //println!("Response: {:?}", response);
 
     let addr: SocketAddr = "0.0.0.0:8080".parse()?;
     let mut endpoint = Endpoint::server(utils::cert::generate_self_signed_cert(), addr)?;

@@ -7,18 +7,14 @@ edition = "2021"
 shared = { path = "../shared" }
 chrono = "0.4.39"
 dotenv = "0.15.0" # For loading environment variables
-sea-orm = { version = "1.1.10", features = ["sqlx-mysql", "sqlx-sqlite", "runtime-tokio-native-tls"] }
-env_logger = "0.11.6" # For logging
+sea-orm = { version = "1.1.10", features = ["sqlx-mysql", "sqlx-sqlite", "runtime-tokio-rustls"] }
 jsonwebtoken = "9.3.0"
 lazy_static = "1.5.0" # For setting up constants
 serde = { version = "1.0.216", features = ["derive"] } # For JSON serialization
 serde_json = "1.0.133" # For working with JSON
-sha256 = "1.5.0"
 strum = "0.27.1"
-strum_macros = "0.27.1"
 tokio = { version = "1.42.0", features = ["full"] } # Async runtime compatible with Actix and SeaORM
 quinn = "0.10"
-dashmap = "6.1.0"
 thiserror = "2.0.12"
 argon2 = "0.5.3"
 tracing-subscriber = "0.3.19"

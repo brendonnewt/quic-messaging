@@ -29,7 +29,7 @@ FROM scratch
 WORKDIR /app
 
 # Copy the compiled static binary into final image
-COPY --from=builder /app/server/target/x86_64-unknown-linux-musl/release/server /server
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/server /server
 
 # Expose the server port
 EXPOSE 8080

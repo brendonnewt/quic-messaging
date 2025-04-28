@@ -21,6 +21,8 @@ RUN rustup target add x86_64-unknown-linux-musl
 WORKDIR /app/server
 RUN cargo build --release --target x86_64-unknown-linux-musl --bin server
 
+RUN find /app -type f
+
 FROM scratch
 
 # Set working directory

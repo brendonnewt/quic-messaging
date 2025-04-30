@@ -49,7 +49,9 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 tokio::spawn(async move {
+                    // Receive messages from the client and respond to them until the connection closes
                     loop {
+                        // Get a ClientRequest JSON
                         let req = match get_client_request(&mut recv).await {
                             Ok(req) => req,
                             Err(e) => {
@@ -69,55 +71,8 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                             }
                         };
 
-                        // Determine ClientRequest and compile proper response
-                        let response = match req.command {
-                            Command::Register { username, password } => {
-                                match auth_controller::register(username, password, db.clone())
-                                    .await
-                                {
-                                    Ok(response_model) => ServerResponse {
-                                        jwt: Some(response_model.token),
-                                        success: true,
-                                        message: Some("Registered".into()),
-                                        data: None,
-                                    },
-                                    Err(e) => ServerResponse {
-                                        jwt: None,
-                                        success: false,
-                                        message: Some(e.to_string()),
-                                        data: None,
-                                    },
-                                }
-                            }
-                            Command::Login { username, password } => {
-                                match auth_controller::login(username, password, db.clone()).await {
-                                    Ok(response_model) => ServerResponse {
-                                        jwt: Some(response_model.token),
-                                        success: true,
-                                        message: Some("Logged In".into()),
-                                        data: None,
-                                    },
-                                    Err(e) => ServerResponse {
-                                        jwt: None,
-                                        success: false,
-                                        message: Some(e.to_string()),
-                                        data: None,
-                                    },
-                                }
-                            }
-                            other => {
-                                // Shouldn't be possible, but covering the case.
-                                ServerResponse {
-                                    jwt: None,
-                                    success: false,
-                                    message: Some(
-                                        ServerError::RequestInvalid(format!("{:?}", other))
-                                            .to_string(),
-                                    ),
-                                    data: None,
-                                }
-                            }
-                        };
+                        // Match command and forward message to the appropriate controller
+                        let response = handle_command(req, db.clone()).await;
 
                         // Send the response
                         if let Err(e) = send_response(&mut send, response).await {
@@ -131,6 +86,60 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
     }
 }
 
+/// Matches the ClientRequest command to one recognized by the system
+/// and returns a response given by the controller for that command
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> ServerResponse {
+    match req.command {
+        Command::Register { username, password } => {
+            match auth_controller::register(username, password, db.clone())
+                .await
+            {
+                Ok(response_model) => ServerResponse {
+                    jwt: Some(response_model.token),
+                    success: true,
+                    message: Some("Registered".into()),
+                    data: None,
+                },
+                Err(e) => ServerResponse {
+                    jwt: None,
+                    success: false,
+                    message: Some(e.to_string()),
+                    data: None,
+                },
+            }
+        }
+        Command::Login { username, password } => {
+            match auth_controller::login(username, password, db.clone()).await {
+                Ok(response_model) => ServerResponse {
+                    jwt: Some(response_model.token),
+                    success: true,
+                    message: Some("Logged In".into()),
+                    data: None,
+                },
+                Err(e) => ServerResponse {
+                    jwt: None,
+                    success: false,
+                    message: Some(e.to_string()),
+                    data: None,
+                },
+            }
+        }
+        other => {
+            // Shouldn't be possible, but covering the case.
+            ServerResponse {
+                jwt: None,
+                success: false,
+                message: Some(
+                    ServerError::RequestInvalid(format!("{:?}", other))
+                        .to_string(),
+                ),
+                data: None,
+            }
+        }
+    }
+}
+
+/// Uses the QUIC sending stream to send a ServerResponse
 async fn send_response(
     send: &mut SendStream,
     resp: ServerResponse,
@@ -143,6 +152,9 @@ async fn send_response(
     Ok(())
 }
 
+/// Receives a message from the client through the QUIC receive stream and
+/// deserializes it into a ClientRequest, or returns a ServerError if
+/// anything goes wrong
 async fn get_client_request(recv: &mut RecvStream) -> Result<ClientRequest, ServerError> {
     // Read the JSON message from the stream
     let mut buf = match receive_msg(recv).await {
@@ -156,6 +168,7 @@ async fn get_client_request(recv: &mut RecvStream) -> Result<ClientRequest, Serv
     deserialize_client_request(&mut buf).await
 }
 
+/// Gets the client message as a Vec of bytes
 async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
     // Read exactly 4 bytes for message length
     let mut len_buf = [0u8; 4];
@@ -185,6 +198,7 @@ async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
     Ok(buf)
 }
 
+/// Deserializes a Vec of bytes into a ClientRequest
 async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, ServerError> {
     match serde_json::from_slice(&buf) {
         Ok(r) => Ok(r),

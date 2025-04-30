@@ -36,7 +36,8 @@ pub struct App {
     pub selected_index: usize,
     pub message: String,
     pub logged_in: bool,
-    pub username: String, // Temporary username for login
+    pub username: String,
+    pub jwt: String,
     pub list_state: ListState,
 }
 
@@ -50,6 +51,7 @@ impl App {
             message: String::new(),
             logged_in: false,
             username: "".to_string(),
+            jwt: "".to_string(),
             list_state: ListState::default(),
         }
     }

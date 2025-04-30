@@ -69,26 +69,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
 
                 // Login form input
                 FormState::LoginForm { username, password, .. } => {
-                    match key.code {
-                        KeyCode::Enter => {
-                            let req = ClientRequest {
-                                jwt: None,
-                                command: Command::Login {
-                                    username: username.clone(),
-                                    password: password.clone(),
-                                },
-                            };
-                            let response = app.send_request(&req).await?;
-
-                            if response.success {
-                                app.message = "Logged In".into();
-                                app.set_user_menu();
-                            }else{
-                                app.message = response.message.unwrap_or("Log In failed".into());
-                            }
-                        }
-                        _ => ui::login::handle_input(app, key),
-                    }
+                    ui::login::handle_input(app, key).await;
                 }
 
                 // Main menu navigation

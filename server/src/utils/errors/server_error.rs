@@ -31,4 +31,7 @@ pub enum ServerError {
 
     #[error("Invalid Request: {0}")]
     RequestInvalid(String),
+
+    #[error("Stream has been disconnected")]
+    Disconnected,
 }

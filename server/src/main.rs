@@ -5,13 +5,14 @@ pub mod utils;
 use crate::handlers::controllers::auth_controller;
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
+use serde::Serialize;
+use serde_json::json;
 use server::utils::errors::server_error::ServerError;
 use shared::client_response::{ClientRequest, Command, ServerResponse};
+use std::io::ErrorKind;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;
 use std::sync::Arc;
-use serde::Serialize;
-use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info};
 use tracing_subscriber;
@@ -56,19 +57,22 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                         // Get a ClientRequest JSON
                         let req = match get_client_request(&mut recv).await {
                             Ok(req) => req,
+                            Err(ServerError::Disconnected) => {
+                                info!("Client closed stream");
+                                break;
+                            }
                             Err(e) => {
+                                println!("Client error: {:?}", e);
                                 // Respond with error JSON and continue listening
-                                let res = ServerResponse {
-                                    jwt: None,
-                                    success: false,
-                                    message: Some(e.to_string()),
-                                    data: None,
-                                };
-
-                                if let Err(e) = send_response(&mut send, res).await {
-                                    eprintln!("Error sending error response: {:?}", e);
+                                if let Err(e) = send_response(
+                                    &mut send,
+                                    build_response::<(), ServerError>(Err(e), None, ""),
+                                )
+                                .await
+                                {
+                                    eprintln!("Error sending error response, closing...: {:?}", e);
+                                    break;
                                 }
-
                                 continue;
                             }
                         };
@@ -78,7 +82,8 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
 
                         // Send the response
                         if let Err(e) = send_response(&mut send, response).await {
-                            error!("Error sending response: {:?}", e);
+                            error!("Error sending response, closing...: {:?}", e);
+                            break;
                         }
                     }
                 });
@@ -105,7 +110,11 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
         }
         other => {
             // Shouldn't be possible, but covering the case.
-            build_response::<(), ServerError>(Err(ServerError::RequestInvalid(format!("{:?}", other))), None, "")
+            build_response::<(), ServerError>(
+                Err(ServerError::RequestInvalid(format!("{:?}", other))),
+                None,
+                "",
+            )
         }
     }
 }
@@ -171,10 +180,18 @@ async fn get_client_request(recv: &mut RecvStream) -> Result<ClientRequest, Serv
 async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
     // Read exactly 4 bytes for message length
     let mut len_buf = [0u8; 4];
-    if recv.read_exact(&mut len_buf).await.is_err() {
-        return Err(ServerError::RequestInvalid(
-            "Couldn't read JSON length".to_string(),
-        )); // Connection closed or error
+    match recv.read_exact(&mut len_buf).await {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Read error: {:?}", e);
+            return if e.to_string().contains("early eof") {
+                Err(ServerError::Disconnected)
+            } else {
+                Err(ServerError::RequestInvalid(
+                    "Couldn't read message length".into(),
+                ))
+            }
+        }
     }
     let msg_len = u32::from_be_bytes(len_buf) as usize;
 

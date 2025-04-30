@@ -41,7 +41,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
             match &mut app.state {
                 // Registration form input
                 FormState::RegisterForm { username, password, confirm_password, .. } => {
-                    match key.code{
+                    match key.code {
                         KeyCode::Enter => {
                             if password != confirm_password {
                                 app.message = "Passwords do not match!".to_string();
@@ -54,7 +54,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                                     password: password.clone(),
                                 },
                             };
-                            let response = utils::helpers::send_request(&conn, &req).await?;
+                            let response = app.send_request(&req).await?;
 
                             if response.success {
                                 app.message = "Registered! Please log in.".into();
@@ -69,7 +69,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
 
                 // Login form input
                 FormState::LoginForm { username, password, .. } => {
-                    match key.code{
+                    match key.code {
                         KeyCode::Enter => {
                             let req = ClientRequest {
                                 jwt: None,
@@ -78,7 +78,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                                     password: password.clone(),
                                 },
                             };
-                            let response = utils::helpers::send_request(&conn, &req).await?;
+                            let response = app.send_request(&req).await?;
 
                             if response.success {
                                 app.message = "Logged In".into();

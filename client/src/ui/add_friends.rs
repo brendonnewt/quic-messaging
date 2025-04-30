@@ -59,7 +59,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             id.pop();
         }
         Char(c) => {
-            id.push(c);
+            if c.is_ascii_digit() {
+                id.push(c);
+            }
         }
         Enter => {
             let req = ClientRequest {

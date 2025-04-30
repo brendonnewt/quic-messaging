@@ -10,6 +10,8 @@ use shared::client_response::{ClientRequest, Command, ServerResponse};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;
 use std::sync::Arc;
+use serde::Serialize;
+use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info};
 use tracing_subscriber;
@@ -91,51 +93,48 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
 async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
-            match auth_controller::register(username, password, db.clone())
-                .await
-            {
-                Ok(response_model) => ServerResponse {
-                    jwt: Some(response_model.token),
-                    success: true,
-                    message: Some("Registered".into()),
-                    data: None,
-                },
-                Err(e) => ServerResponse {
-                    jwt: None,
-                    success: false,
-                    message: Some(e.to_string()),
-                    data: None,
-                },
-            }
+            let result = auth_controller::register(username, password, db.clone()).await;
+            let jwt = result.as_ref().ok().map(|r| r.token.clone());
+            build_response(result, jwt, "Registered")
         }
+
         Command::Login { username, password } => {
-            match auth_controller::login(username, password, db.clone()).await {
-                Ok(response_model) => ServerResponse {
-                    jwt: Some(response_model.token),
-                    success: true,
-                    message: Some("Logged In".into()),
-                    data: None,
-                },
-                Err(e) => ServerResponse {
-                    jwt: None,
-                    success: false,
-                    message: Some(e.to_string()),
-                    data: None,
-                },
-            }
+            let result = auth_controller::login(username, password, db.clone()).await;
+            let jwt = result.as_ref().ok().map(|r| r.token.clone());
+            build_response(result, jwt, "Logged in")
         }
         other => {
             // Shouldn't be possible, but covering the case.
-            ServerResponse {
-                jwt: None,
-                success: false,
-                message: Some(
-                    ServerError::RequestInvalid(format!("{:?}", other))
-                        .to_string(),
-                ),
-                data: None,
-            }
+            build_response::<(), ServerError>(Err(ServerError::RequestInvalid(format!("{:?}", other))), None, "")
         }
+    }
+}
+
+/// Builds a response based on
+/// 1: The result of controller call
+/// 2: The type of model returned by the controller
+pub fn build_response<T, E>(
+    result: Result<T, E>,
+    jwt: Option<String>,
+    message: &str,
+) -> ServerResponse
+where
+    T: Serialize,
+    E: std::fmt::Display,
+{
+    match result {
+        Ok(data) => ServerResponse {
+            jwt,
+            success: true,
+            message: Some(message.to_string()),
+            data: Some(json!(data)),
+        },
+        Err(e) => ServerResponse {
+            jwt: None,
+            success: false,
+            message: Some(e.to_string()),
+            data: None,
+        },
     }
 }
 

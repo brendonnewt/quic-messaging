@@ -1,4 +1,4 @@
-use crate::{app::{App, FormState}, ui, event};
+use crate::{app::{App, FormState}, ui, event, utils};
 use crossterm::{
     event::{Event, KeyCode},
     execute,
@@ -54,18 +54,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                                     password: password.clone(),
                                 },
                             };
-                            let bytes = serde_json::to_vec(&req)?;
-                            tracing::info!("[Client] Opening QUIC stream for Register");
-                            let (mut send, mut recv) = conn.open_bi().await?;
-                            tracing::info!("[Client] Sending {} bytes", bytes.len());
-                            send.write_all(&bytes).await?;
-                            tracing::info!("[Client] Finishing send half");
-                            send.finish().await?;
-                            tracing::info!("[Client] Waiting for response…");
-
-                            let resp_bytes = recv.read_to_end(usize::MAX).await?;
-                            info!("[Client] Received {} bytes", resp_bytes.len());
-                            let response: ServerResponse = serde_json::from_slice(&resp_bytes)?;
+                            let response = utils::helpers::send_request(&conn, &req).await?;
 
                             if response.success {
                                 app.message = "Registered! Please log in.".into();
@@ -89,18 +78,7 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                                     password: password.clone(),
                                 },
                             };
-                            let bytes = serde_json::to_vec(&req)?;
-                            tracing::info!("[Client] Opening QUIC stream for LogIN");
-                            let (mut send, mut recv) = conn.open_bi().await?;
-                            tracing::info!("[Client] Sending {} bytes", bytes.len());
-                            send.write_all(&bytes).await?;
-                            tracing::info!("[Client] Finishing send half");
-                            send.finish().await?;
-                            tracing::info!("[Client] Waiting for response…");
-
-                            let resp_bytes = recv.read_to_end(usize::MAX).await?;
-                            info!("[Client] Received {} bytes", resp_bytes.len());
-                            let response: ServerResponse = serde_json::from_slice(&resp_bytes)?;
+                            let response = utils::helpers::send_request(&conn, &req).await?;
 
                             if response.success {
                                 app.message = "Logged In".into();

@@ -28,4 +28,7 @@ pub enum ServerError {
 
     #[error("Invalid Password: {0}")]
     PasswordInvalid(String),
+
+    #[error("Invalid Request: {0}")]
+    RequestInvalid(String),
 }

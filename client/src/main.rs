@@ -56,9 +56,8 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     let server_addr: SocketAddr = port.parse()?;
     let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
     let conn = Arc::new(new_conn);
-    let (mut send, mut recv) = conn.open_bi().await?;
 
-    let mut app = App::new(send, recv);
-    run_app(&mut app, conn.clone()).await?;
+    let mut app = App::new(conn);
+    run_app(&mut app).await?;
     Ok(())
 }

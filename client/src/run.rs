@@ -1,23 +1,18 @@
-use crate::app::ActiveField;
-use crate::ui::{login, registration, user_menu};
 use crate::{
     app::{App, FormState},
-    event, ui, utils,
+    event, ui,
 };
 use crossterm::{
-    event::{Event, KeyCode},
+    event::KeyCode,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use shared::client_response::{ClientRequest, Command, ServerResponse};
 use std::io::{self, Stdout};
 use std::sync::Arc;
-use tracing::info;
 
 pub async fn run_app(
     app: &mut App,
-    conn: Arc<quinn::Connection>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
@@ -30,11 +25,15 @@ pub async fn run_app(
         terminal.draw(|f| {
             match &app.state {
                 FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::LoginForm { .. } => login::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::RegisterForm { .. } => {
-                    registration::render::<CrosstermBackend<Stdout>>(f, app)
+                FormState::LoginForm { .. } => {
+                    ui::login::render::<CrosstermBackend<Stdout>>(f, app)
                 }
-                FormState::UserMenu { .. } => user_menu::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::RegisterForm { .. } => {
+                    ui::registration::render::<CrosstermBackend<Stdout>>(f, app)
+                }
+                FormState::UserMenu { .. } => {
+                    ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
             }
         })?;

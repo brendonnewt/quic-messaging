@@ -53,13 +53,12 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                 let db = db.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
-                    loop {
                         // Get a ClientRequest JSON
                         let req = match get_client_request(&mut recv).await {
                             Ok(req) => req,
                             Err(ServerError::Disconnected) => {
                                 info!("Client closed stream");
-                                break;
+                                return;
                             }
                             Err(e) => {
                                 println!("Client error: {:?}", e);
@@ -71,9 +70,9 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                                 .await
                                 {
                                     eprintln!("Error sending error response, closing...: {:?}", e);
-                                    break;
+                                    return;
                                 }
-                                continue;
+                                return;
                             }
                         };
 
@@ -83,9 +82,8 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
                         // Send the response
                         if let Err(e) = send_response(&mut send, response).await {
                             error!("Error sending response, closing...: {:?}", e);
-                            break;
+                            return;
                         }
-                    }
                 });
             }
         }
@@ -157,6 +155,7 @@ async fn send_response(
     let len = (bytes.len() as u32).to_be_bytes();
     send.write_all(&len).await?;
     send.write_all(&bytes).await?;
+    send.finish().await?;
     Ok(())
 }
 

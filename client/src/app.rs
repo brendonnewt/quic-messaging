@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
-use shared::client_response::{ClientRequest, Command, ServerResponse};
+use shared::client_response::{ClientRequest, Command};
+use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {

@@ -1,10 +1,9 @@
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;
-use crate::handlers::services::{auth_service, user_service};
+use crate::handlers::services::{user_service};
 use crate::utils::errors::server_error::ServerError;
-use crate::utils::json_models::auth_models::AuthResponseModel;
-use crate::utils::json_models::server_models::ServerResponseModel;
-use crate::utils::json_models::user_models::{User, UserList};
+use shared::models::server_models::ServerResponseModel;
+use shared::models::user_models::{User, UserList};
 
 pub async fn get_user_info(
     jwt: String,

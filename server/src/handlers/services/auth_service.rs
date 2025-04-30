@@ -3,7 +3,7 @@ use crate::utils;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use utils::errors::server_error::ServerError;
-use utils::json_models::auth_models::AuthResponseModel;
+use shared::models::auth_models::AuthResponseModel;
 use utils::jwt;
 
 pub async fn register(

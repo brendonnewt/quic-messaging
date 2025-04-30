@@ -2,7 +2,7 @@ use crate::entity;
 use crate::handlers::repositories::chat_repository;
 use crate::handlers::repositories::chat_repository::get_read_entry;
 use crate::utils::errors::server_error::ServerError;
-use crate::utils::json_models::server_models::ServerResponseModel;
+use shared::models::server_models::ServerResponseModel;
 use crate::utils::jwt;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;

@@ -1,18 +1,24 @@
-use crate::{app::{App, FormState}, ui, event, utils};
+use crate::app::ActiveField;
+use crate::ui::{login, registration, user_menu};
+use crate::{
+    app::{App, FormState},
+    event, ui, utils,
+};
 use crossterm::{
     event::{Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use shared::client_response::{ClientRequest, Command, ServerResponse};
 use std::io::{self, Stdout};
 use std::sync::Arc;
 use tracing::info;
-use shared::client_response::{ClientRequest, Command, ServerResponse};
-use crate::app::ActiveField;
-use crate::ui::{registration, login, user_menu};
 
-pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(
+    app: &mut App,
+    conn: Arc<quinn::Connection>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -21,12 +27,13 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
 
     loop {
         // 1) Draw the appropriate UI for the current state
-        terminal
-            .draw(|f| {
+        terminal.draw(|f| {
             match &app.state {
                 FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
                 FormState::LoginForm { .. } => login::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::RegisterForm { .. } => registration::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::RegisterForm { .. } => {
+                    registration::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::UserMenu { .. } => user_menu::render::<CrosstermBackend<Stdout>>(f, app),
                 FormState::Exit => return, // stops drawing, we’ll break below
             }
@@ -40,35 +47,12 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
         if let Some(key) = event::poll_event()? {
             match &mut app.state {
                 // Registration form input
-                FormState::RegisterForm { username, password, confirm_password, .. } => {
-                    match key.code {
-                        KeyCode::Enter => {
-                            if password != confirm_password {
-                                app.message = "Passwords do not match!".to_string();
-                                continue;
-                            }
-                            let req = ClientRequest {
-                                jwt: None,
-                                command: Command::Register {
-                                    username: username.clone(),
-                                    password: password.clone(),
-                                },
-                            };
-                            let response = app.send_request(&req).await?;
-
-                            if response.success {
-                                app.message = "Registered! Please log in.".into();
-                                app.set_main_menu();
-                            }else{
-                                app.message = response.message.unwrap_or("Registration failed".into());
-                            }
-                        }
-                        _ => ui::registration::handle_input(app, key),
-                    }
+                FormState::RegisterForm { .. } => {
+                    ui::registration::handle_input(app, key).await;
                 }
 
                 // Login form input
-                FormState::LoginForm { username, password, .. } => {
+                FormState::LoginForm { .. } => {
                     ui::login::handle_input(app, key).await;
                 }
 
@@ -107,11 +91,11 @@ pub async fn run_app(app: &mut App, conn: Arc<quinn::Connection>) -> Result<(), 
                     }
                     KeyCode::Enter | KeyCode::Char('\r') => {
                         match *selected_index {
-                            0 => {/* Chats */},
-                            1 => {/* Chatroom */},
-                            2 => {/* Add Friends */},
-                            3 => {/* Friend List */},
-                            4 => {/* Settings */},
+                            0 => { /* Chats */ }
+                            1 => { /* Chatroom */ }
+                            2 => { /* Add Friends */ }
+                            3 => { /* Friend List */ }
+                            4 => { /* Settings */ }
                             5 => app.set_main_menu(), // Log Out -> back to main menu
                             _ => {}
                         }

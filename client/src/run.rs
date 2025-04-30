@@ -34,6 +34,9 @@ pub async fn run_app(
                 FormState::UserMenu { .. } => {
                     ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::AddFriend { .. } => {
+                    ui::add_friends::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
             }
         })?;
@@ -53,6 +56,10 @@ pub async fn run_app(
                 // Login form input
                 FormState::LoginForm { .. } => {
                     ui::login::handle_input(app, key).await;
+                }
+
+                FormState::AddFriend { .. } => {
+                    ui::add_friends::handle_input(app, key).await;
                 }
 
                 // Main menu navigation
@@ -92,7 +99,7 @@ pub async fn run_app(
                         match *selected_index {
                             0 => { /* Chats */ }
                             1 => { /* Chatroom */ }
-                            2 => { /* Add Friends */ }
+                            2 => { app.set_add_friend() }
                             3 => { /* Friend List */ }
                             4 => { /* Settings */ }
                             5 => app.set_main_menu(), // Log Out -> back to main menu

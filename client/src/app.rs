@@ -1,4 +1,8 @@
+use std::sync::Arc;
+use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
+use shared::client_response::{ClientRequest, Command};
+use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
@@ -29,23 +33,51 @@ pub enum FormState {
 
 pub struct App {
     pub state: FormState,
+    pub conn: Arc<Connection>,
     pub selected_index: usize,
     pub message: String,
     pub logged_in: bool,
-    pub username: String, // Temporary username for login
+    pub username: String,
+    pub jwt: String,
     pub list_state: ListState,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(conn: Arc<Connection>) -> Self {
         App {
             state: FormState::MainMenu,
+            conn,
             selected_index: 0,
             message: String::new(),
             logged_in: false,
             username: "".to_string(),
+            jwt: "".to_string(),
             list_state: ListState::default(),
         }
+    }
+
+    pub async fn send_request(
+        &mut self,
+        request: &ClientRequest,
+    ) -> Result<ServerResponse, Box<dyn std::error::Error>> {
+        let bytes = serde_json::to_vec(request)?;
+        let len = (bytes.len() as u32).to_be_bytes();
+
+        let (mut send, mut recv) = self.conn.open_bi().await?;
+        
+        send.write_all(&len).await?;
+        send.write_all(&bytes).await?;
+        send.finish().await?;
+
+        let mut len_buf = [0u8; 4];
+        recv.read_exact(&mut len_buf).await?;
+        let resp_len = u32::from_be_bytes(len_buf) as usize;
+
+        let mut resp_buf = vec![0u8; resp_len];
+        recv.read_exact(&mut resp_buf).await?;
+        let response = serde_json::from_slice(&resp_buf)?;
+
+        Ok(response)
     }
 
     // Switch states

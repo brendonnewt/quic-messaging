@@ -3,8 +3,8 @@ use sea_orm::DatabaseConnection;
 use crate::{entity, utils};
 use utils::errors::server_error::ServerError;
 use crate::entity::sea_orm_active_enums::Status;
-use crate::utils::json_models::server_models::ServerResponseModel;
-use crate::utils::json_models::user_models::{FriendRequestList, User, UserList};
+use shared::models::server_models::ServerResponseModel;
+use shared::models::user_models::{FriendRequestList, User, UserList};
 use crate::utils::jwt;
 use crate::handlers::repositories::user_repository;
 

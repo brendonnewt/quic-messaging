@@ -1,17 +1,24 @@
-pub mod utils;
 pub mod entity;
 pub mod handlers;
+pub mod utils;
 
-use shared::client_response::{ClientRequest, Command, ServerResponse};
+use crate::handlers::controllers::auth_controller;
+use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
+use serde::Serialize;
+use serde_json::json;
+use server::utils::errors::server_error::ServerError;
+use shared::client_response::{ClientRequest, Command};
+use shared::server_response::ServerResponse;
+use std::io::ErrorKind;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;
 use std::sync::Arc;
-use quinn::Endpoint;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{error, info};
 use tracing_subscriber;
-use crate::handlers::controllers::auth_controller;
+
+const MAX_MESSAGE_SIZE: usize = 65536; // 64 KB
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,12 +32,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_url = utils::constants::DATABASE_URL.to_string();
     let db: DatabaseConnection = sea_orm::Database::connect(&db_url).await?;
     let db_arc = Arc::new(db);
-    
-    //handlers::controllers::auth_controller::register("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
-    
-    //let response = handlers::controllers::auth_controller::login("Brendon".to_string(), "Password".to_string(), db_arc.clone()).await?;
-    
-    //println!("Response: {:?}", response);
 
     let addr: SocketAddr = "0.0.0.0:8080".parse()?;
     let mut endpoint = Endpoint::server(utils::cert::generate_self_signed_cert(), addr)?;
@@ -42,7 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-
 }
 
 async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseConnection>) {
@@ -53,98 +53,171 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseCon
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 tokio::spawn(async move {
-                    //info!("▶️  New RPC stream; waiting for request…");
-                    let mut buf = Vec::new();
-                    while let Ok(n) = recv.read_buf(&mut buf).await {
-                        //info!("  📥 read_buf returned {} bytes", n);
-                        if n == 0 {
-                            //info!("  📥 EOF on recv side");
-                            break;
-                        }
-                    }
+                    // Receive messages from the client and respond to them until the connection closes
+                        // Get a ClientRequest JSON
+                        let req = match get_client_request(&mut recv).await {
+                            Ok(req) => req,
+                            Err(ServerError::Disconnected) => {
+                                info!("Client closed stream");
+                                return;
+                            }
+                            Err(e) => {
+                                println!("Client error: {:?}", e);
+                                // Respond with error JSON and continue listening
+                                if let Err(e) = send_response(
+                                    &mut send,
+                                    build_response::<(), ServerError>(Err(e), None, ""),
+                                )
+                                .await
+                                {
+                                    eprintln!("Error sending error response, closing...: {:?}", e);
+                                    return;
+                                }
+                                return;
+                            }
+                        };
 
-                    //info!("  📥 Full request buffer: {}", String::from_utf8_lossy(&buf));
+                        // Match command and forward message to the appropriate controller
+                        let response = handle_command(req, db.clone()).await;
 
-
-                    // Deserialize ClientRequest
-                    let req: ClientRequest = match serde_json::from_slice(&buf) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            //error!("  ❌ JSON parse error: {}", e);
-                            let response = ServerResponse {
-                                jwt: None,
-                                success: false,
-                                message: Some(format!("Invalid JSON: {}", e)),
-                                data: None,
-                            };
-                            //info!("  📤 Sending error response and FIN");
-                            let _ = send.write_all(serde_json::to_string(&response).unwrap().as_bytes()).await;
-                            let _ = send.finish().await;
+                        // Send the response
+                        if let Err(e) = send_response(&mut send, response).await {
+                            error!("Error sending response, closing...: {:?}", e);
                             return;
                         }
-                    };
-
-                    //info!("  ⚙️  Dispatching command");
-
-                    // Determine ClientRequest and compile proper response
-                    let response = match req.command {
-                        Command::Register {username, password} => {
-                            //info!("   ↪️  Calling auth_controller::register");
-                            match auth_controller::register(username, password, db).await {
-                                Ok(response_model) => ServerResponse {
-                                    jwt: Some(response_model.token),
-                                    success: true,
-                                    message: Some("Registered".into()),
-                                    data: None,
-                                },
-                                Err(e) => ServerResponse {
-                                    jwt: None,
-                                    success: false,
-                                    message: Some(e.to_string()),
-                                    data: None,
-                                },
-                            }
-                        }
-                        Command::Login {username, password} => {
-                            match auth_controller::login(username, password, db).await {
-                                Ok(response_model) => ServerResponse {
-                                    jwt: Some(response_model.token),
-                                    success: true,
-                                    message: Some("Logged In".into()),
-                                    data: None,
-                                },
-                                Err(e) => ServerResponse{
-                                    jwt: None,
-                                    success: false,
-                                    message: Some(e.to_string()),
-                                    data: None,
-                                }
-                            }
-                        }
-                        other => {
-                            // Shouldn't be possible, but covering the case.
-                            ServerResponse {
-                                jwt: None,
-                                success: false,
-                                message: Some(format!("Unsupported Command: {:?}", other)),
-                                data: None,
-                            }
-                        }
-                    };
-
-                    // Send response
-                    let bytes = serde_json::to_vec(&response).expect("Failed to serialize response");
-                    //info!("  📤 Writing {} bytes response", bytes.len());
-                    if let Err(e) = send.write_all(&bytes).await {
-                        eprintln!("Failed to send response: {}", e);
-                    }
-                    // Close send_half of bidirectional stream in preparation for new stream
-                    let _ = send.finish().await;
                 });
             }
-
         }
         Err(e) => eprintln!("Connection failed: {:?}", e),
     }
 }
 
+/// Matches the ClientRequest command to one recognized by the system
+/// and returns a response given by the controller for that command
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> ServerResponse {
+    match req.command {
+        Command::Register { username, password } => {
+            let result = auth_controller::register(username, password, db.clone()).await;
+            let jwt = result.as_ref().ok().map(|r| r.token.clone());
+            build_response(result, jwt, "Registered")
+        }
+
+        Command::Login { username, password } => {
+            let result = auth_controller::login(username, password, db.clone()).await;
+            let jwt = result.as_ref().ok().map(|r| r.token.clone());
+            build_response(result, jwt, "Logged in")
+        }
+        other => {
+            // Shouldn't be possible, but covering the case.
+            build_response::<(), ServerError>(
+                Err(ServerError::RequestInvalid(format!("{:?}", other))),
+                None,
+                "",
+            )
+        }
+    }
+}
+
+/// Builds a response based on
+/// 1: The result of controller call
+/// 2: The type of model returned by the controller
+pub fn build_response<T, E>(
+    result: Result<T, E>,
+    jwt: Option<String>,
+    message: &str,
+) -> ServerResponse
+where
+    T: Serialize,
+    E: std::fmt::Display,
+{
+    match result {
+        Ok(data) => ServerResponse {
+            jwt,
+            success: true,
+            message: Some(message.to_string()),
+            data: Some(json!(data)),
+        },
+        Err(e) => ServerResponse {
+            jwt: None,
+            success: false,
+            message: Some(e.to_string()),
+            data: None,
+        },
+    }
+}
+
+/// Uses the QUIC sending stream to send a ServerResponse
+async fn send_response(
+    send: &mut SendStream,
+    resp: ServerResponse,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Send response
+    let bytes = serde_json::to_vec(&resp).expect("Failed to serialize response");
+    let len = (bytes.len() as u32).to_be_bytes();
+    send.write_all(&len).await?;
+    send.write_all(&bytes).await?;
+    send.finish().await?;
+    Ok(())
+}
+
+/// Receives a message from the client through the QUIC receive stream and
+/// deserializes it into a ClientRequest, or returns a ServerError if
+/// anything goes wrong
+async fn get_client_request(recv: &mut RecvStream) -> Result<ClientRequest, ServerError> {
+    // Read the JSON message from the stream
+    let mut buf = match receive_msg(recv).await {
+        Ok(buf) => buf,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
+    // Deserialize ClientRequest
+    deserialize_client_request(&mut buf).await
+}
+
+/// Gets the client message as a Vec of bytes
+async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
+    // Read exactly 4 bytes for message length
+    let mut len_buf = [0u8; 4];
+    match recv.read_exact(&mut len_buf).await {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Read error: {:?}", e);
+            return if e.to_string().contains("early eof") {
+                Err(ServerError::Disconnected)
+            } else {
+                Err(ServerError::RequestInvalid(
+                    "Couldn't read message length".into(),
+                ))
+            }
+        }
+    }
+    let msg_len = u32::from_be_bytes(len_buf) as usize;
+
+    // Check that message isn't too large (protecting against DDoS
+    if msg_len > MAX_MESSAGE_SIZE {
+        error!("Received message exceeding max allowed size");
+        return Err(ServerError::RequestInvalid(
+            "Received message exceeding max allowed size".to_string(),
+        ));
+    }
+
+    // Read exactly `msg_len` bytes for the message
+    let mut buf = vec![0u8; msg_len];
+    if recv.read_exact(&mut buf).await.is_err() {
+        return Err(ServerError::RequestInvalid(
+            "Couldn't read JSON".to_string(),
+        )); // Connection closed or error
+    }
+
+    Ok(buf)
+}
+
+/// Deserializes a Vec of bytes into a ClientRequest
+async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, ServerError> {
+    match serde_json::from_slice(&buf) {
+        Ok(r) => Ok(r),
+        Err(_) => Err(ServerError::RequestInvalid("Invalid JSON".to_string())),
+    }
+}

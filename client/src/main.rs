@@ -57,7 +57,7 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
     let conn = Arc::new(new_conn);
 
-    let mut app = App::new();
-    run_app(&mut app, conn.clone()).await?;
+    let mut app = App::new(conn);
+    run_app(&mut app).await?;
     Ok(())
 }

@@ -32,5 +32,11 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Your Menu"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
-    f.render_widget(list, chunks[0]);
+    let area = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(4)
+        .constraints([Constraint::Min(0)])
+        .split(f.size())[0];
+
+    f.render_widget(list, area);
 }

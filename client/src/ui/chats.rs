@@ -1,51 +1,55 @@
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
+use crate::app::{App, FormState};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, List, ListItem},
+    text::Text,
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
-use crate::app::{ActiveField, App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
-        .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
+        .constraints([
+            Constraint::Min(5),   // Chat list
+            Constraint::Length(3), // Add Chat
+            Constraint::Length(3), // Message
+        ])
         .split(f.size());
 
-    let selected = if let FormState::UserMenu { selected_index } = app.state {
+    let chats: Vec<String> = Vec::new(); //app.get_chats(); // Your getter function
+    let selected = if let FormState::Chats { selected_index } = app.state {
         selected_index
     } else { 0 };
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
+    let items: Vec<ListItem> = chats.iter().enumerate().map(|(i, chat)| {
         let style = if i == selected {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
-        ListItem::new(opt).style(style)
+        ListItem::new(chat.clone()).style(style)
     }).collect();
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Your Menu"))
-        .highlight_style(Style::default().bg(Color::DarkGray));
+        .block(Block::default().title("Chats").borders(Borders::ALL))
+        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
-    let area = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(4)
-        .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+    f.render_widget(list, chunks[0]);
 
-    f.render_widget(list, area);
+    let add_chat = Paragraph::new(Text::from("[Enter] Add New Chat"))
+        .block(Block::default().title("New Chat").borders(Borders::ALL));
+    f.render_widget(add_chat, chunks[1]);
+
+    let message = Paragraph::new(Text::from(app.message.clone())).style(Style::default());
+    f.render_widget(message, chunks[2]);
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    if let FormState::UserMenu { selected_index } = app.state {
+    if let FormState::Chats { selected_index } = app.state {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => match selected_index {
                 0 => app.state = FormState::Chats { selected_index: 0 }, // index 0 = Chats
@@ -66,8 +70,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     app.set_user_menu_selected_index(selected_index + 1);
                 }
             }
+            KeyCode::Esc => {
+                app.state = FormState::UserMenu { selected_index: 0 };
+            }
             _ => {}
         }
     }
 }
-

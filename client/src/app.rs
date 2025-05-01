@@ -28,6 +28,9 @@ pub enum FormState {
     UserMenu {
         selected_index: usize,
     },
+    Chats {
+        selected_index: usize,
+    },
     Exit,
 }
 

@@ -34,7 +34,11 @@ pub async fn run_app(
                 FormState::UserMenu { .. } => {
                     ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::Chats { .. } => {
+                    ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
+                _ => return,
             }
         })?;
 
@@ -74,35 +78,15 @@ pub async fn run_app(
                         _ => {}
                     },
                     _ => {}
-                },
-
+                }
+                
                 // User menu navigation (post-login)
-                FormState::UserMenu { selected_index } => match key.code {
-                    KeyCode::Up => {
-                        if *selected_index > 0 {
-                            *selected_index -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if *selected_index + 1 < 6 {
-                            *selected_index += 1;
-                        }
-                    }
-                    KeyCode::Enter | KeyCode::Char('\r') => {
-                        match *selected_index {
-                            0 => { /* Chats */ }
-                            1 => { /* Chatroom */ }
-                            2 => { /* Add Friends */ }
-                            3 => { /* Friend List */ }
-                            4 => { /* Settings */ }
-                            5 => app.set_main_menu(), // Log Out -> back to main menu
-                            _ => {}
-                        }
-                    }
-                    KeyCode::Esc => {
-                        app.set_main_menu();
-                    }
-                    _ => {}
+                FormState::UserMenu { .. } => {
+                    ui::user_menu::handle_input(app, key).await;
+                }
+                
+                FormState::Chats { .. } => {
+                    ui::chats::handle_input(app, key).await;
                 },
 
                 // Any other state: do nothing

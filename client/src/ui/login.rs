@@ -111,6 +111,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                             app.jwt = jwt;
                             app.username = username.clone();
                             app.state = FormState::UserMenu { selected_index: 0 };
+                            app.message = format!("Welcome {}!", username);
                         }
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;

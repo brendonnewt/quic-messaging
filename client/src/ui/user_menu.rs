@@ -7,20 +7,29 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
+use ratatui::widgets::Paragraph;
 use shared::client_response::{ClientRequest, Command};
 use crate::app::{ActiveField, App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
-    let chunks = Layout::default()
+
+    // Split the screen into menu area and message area
+    let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
-        .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
+        .constraints([
+            Constraint::Min(10),  // Menu list area
+            Constraint::Length(3), // Message display
+        ])
         .split(f.size());
 
+    // Further split the top part for list items
     let selected = if let FormState::UserMenu { selected_index } = app.state {
         selected_index
-    } else { 0 };
+    } else {
+        0
+    };
 
     let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
         let style = if i == selected {
@@ -35,13 +44,13 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .block(Block::default().borders(Borders::ALL).title("Your Menu"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
-    let area = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(4)
-        .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+    f.render_widget(list, main_chunks[0]);
 
-    f.render_widget(list, area);
+    // Render app message
+    let message = Paragraph::new(app.message.clone())
+        .block(Block::default().borders(Borders::ALL).title("Status"));
+
+    f.render_widget(message, main_chunks[1]);
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {

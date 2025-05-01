@@ -1,6 +1,6 @@
 use crate::entity;
 use futures::future::join_all;
-use crate::handlers::repositories::chat_repository;
+use crate::handlers::repositories::{chat_repository, user_repository};
 use crate::handlers::repositories::chat_repository::{get_other_usernames_in_chat, get_read_entry};
 use crate::utils::errors::server_error::ServerError;
 use shared::models::server_models::ServerResponseModel;
@@ -10,6 +10,7 @@ use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages};
 use shared::models::user_models::User;
+use crate::handlers::services::user_service;
 
 // Create a new chat (group or direct)
 pub async fn create_chat(
@@ -48,8 +49,14 @@ pub async fn send_message(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let sender_id = claim.claims.user_id;
 
-    chat_repository::send_message(chat_id, sender_id, content, db.clone()).await?;
-    Ok(ServerResponseModel { success: true })
+    let user = user_repository::get_user_by_id(sender_id, db.clone()).await?;
+
+    if let Some(user) = user {
+        chat_repository::send_message(chat_id, sender_id, user.username, content, db.clone()).await?;
+        return Ok(ServerResponseModel { success: true });
+    }
+    
+    Err(ServerError::UserNotFound)
 }
 
 pub async fn get_user_chats(jwt: String, db: Arc<DatabaseConnection>) -> Result<ChatList, ServerError> {

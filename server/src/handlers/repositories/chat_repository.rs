@@ -152,12 +152,15 @@ pub async fn get_paginated_messages(
 pub async fn send_message(
     chat_id: i32,
     sender_id: i32,
+    username: String,
     content: String,
     db: Arc<DatabaseConnection>,
 ) -> Result<(), ServerError> {
+    
     let new_msg = entity::messages::ActiveModel {
         chat_id: Set(chat_id),
         sender_id: Set(sender_id),
+        sender_username: Set(username),
         content: Set(content),
         read: Set(false as i8),
         timestamp: Set(Utc::now().naive_utc()),

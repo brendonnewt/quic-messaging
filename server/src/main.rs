@@ -122,7 +122,14 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
             } else {
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
-            
+        }
+        
+        Command::SendMessage { chat_id, content} => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::send_message(jwt, chat_id, content, db.clone()).await, None, "Message Sent")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
         }
         other => {
             // Shouldn't be possible, but covering the case.

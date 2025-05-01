@@ -34,6 +34,7 @@ pub enum FormState {
     },
     Chat {
         chat_name: String,
+        chat_id: i32,
         page: usize,
         input_buffer: String,
         messages: Vec<ChatMessage>,
@@ -49,6 +50,7 @@ pub struct App {
     pub logged_in: bool,
     pub username: String,
     pub jwt: String,
+    pub user_id: i32,
     pub list_state: ListState,
     pub chats: Vec<Chat>,
 }
@@ -63,6 +65,7 @@ impl App {
             logged_in: false,
             username: "".to_string(),
             jwt: "".to_string(),
+            user_id: -1,
             list_state: ListState::default(),
             chats: Vec::new(),
         }
@@ -223,6 +226,7 @@ impl App {
                             Ok(messages) => {
                                 self.state = FormState::Chat {
                                     chat_name,
+                                    chat_id,
                                     messages: messages.messages,
                                     page: 0,
                                     input_buffer: "".to_string(),

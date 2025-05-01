@@ -10,4 +10,5 @@ pub struct AuthModel {
 pub struct AuthResponseModel {
     pub success: bool,
     pub token: String,
+    pub user_id: i32,
 }

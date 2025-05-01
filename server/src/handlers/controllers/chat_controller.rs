@@ -24,3 +24,7 @@ pub async fn get_chat_messages(
     // Get a list of users' chats in timestamp descending order
     chat_service::get_chat_messages(jwt, chat_id, page, page_size, db.clone()).await
 }
+
+pub async fn send_message(jwt: String, chat_id: i32, content: String, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    chat_service::send_message(jwt, chat_id, content, db.clone()).await
+}

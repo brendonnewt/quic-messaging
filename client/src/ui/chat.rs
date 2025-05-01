@@ -8,6 +8,9 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
+use shared::client_response::ClientRequest;
+use shared::client_response::Command::SendMessage;
+use shared::models::chat_models::{ChatMessage, ChatMessages};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -20,14 +23,28 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         ])
         .split(f.size());
 
-    if let FormState::Chat { chat_name, page, messages, input_buffer } = &mut app.state {
-        let items: Vec<ListItem> = messages.iter().map(|msg| {
-            let line = format!("{}: {}", msg.username, msg.content);
-            ListItem::new(Text::from(line))
-        }).collect();
+    if let FormState::Chat {
+        chat_name,
+        chat_id,
+        page,
+        messages,
+        input_buffer,
+    } = &mut app.state {
+        let items: Vec<ListItem> = messages
+            .iter()
+            .rev()
+            .map(|msg| {
+                let line = format!("{}: {}", msg.username, msg.content);
+                ListItem::new(Text::from(line))
+            })
+            .collect();
 
         let list = List::new(items)
-            .block(Block::default().title(chat_name.as_str()).borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .title(chat_name.as_str())
+                    .borders(Borders::ALL),
+            )
             .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
         f.render_widget(list, chunks[0]);
@@ -55,20 +72,61 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    if let FormState::Chat { input_buffer, .. } = &mut app.state {
-        match key.code {
-            KeyCode::Char(c) => input_buffer.push(c),
-            KeyCode::Backspace => {
-                input_buffer.pop();
-            }
-            KeyCode::Enter => {
-                // TODO: Send message logic here
-                input_buffer.clear();
-            }
-            KeyCode::Esc => {
-                app.state = FormState::Chats { selected_index: 0 };
-            }
-            _ => {}
+    let (input_buffer, chat_id) = match &mut app.state {
+        FormState::Chat {
+            input_buffer,
+            chat_id,
+            ..
+        } => (input_buffer, chat_id),
+        _ => return,
+    };
+
+    match key.code {
+        KeyCode::Char(c) => input_buffer.push(c),
+        KeyCode::Backspace => {
+            input_buffer.pop();
         }
+        KeyCode::Enter => {
+            let request = ClientRequest {
+                jwt: Some(app.jwt.clone()),
+                command: SendMessage {
+                    chat_id: *chat_id,
+                    content: input_buffer.clone(),
+                },
+            };
+            let message_text = input_buffer.clone();
+            let user_id = app.user_id;
+            let response = match app.send_request(&request).await {
+                Ok(response) => response,
+                Err(err) => {
+                    app.message = format!("Error: {}", err);
+                    return;
+                }
+            };
+            if response.success {
+                let (input_buffer, messages) = match &mut app.state {
+                    FormState::Chat {
+                        input_buffer,
+                        messages,
+                        ..
+                    } => (input_buffer, messages),
+                    _ => return,
+                };
+                messages.insert(0, ChatMessage {
+                    user_id,
+                    username: app.username.clone(),
+                    content: message_text,
+                });
+                input_buffer.clear();
+                app.message.clear();
+            } else {
+                app.message = response.message.unwrap_or("Failed to send message".into());
+            }
+        }
+
+        KeyCode::Esc => {
+            app.state = FormState::Chats { selected_index: 0 };
+        }
+        _ => {}
     }
 }

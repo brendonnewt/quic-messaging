@@ -20,33 +20,38 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         ])
         .split(f.size());
 
-    // Pattern match early, then borrow rest of app freely
-    let (chat_name, page, messages, input_buffer) = match &mut app.state {
-        FormState::Chat { chat_name, page, messages, input_buffer } => (chat_name, page, messages, input_buffer),
-        _ => return,
-    };
+    if let FormState::Chat { chat_name, page, messages, input_buffer } = &mut app.state {
+        let items: Vec<ListItem> = messages.iter().map(|msg| {
+            let line = format!("{}: {}", msg.username, msg.content);
+            ListItem::new(Text::from(line))
+        }).collect();
 
-    // Build chat messages list with username prepended
-    let items: Vec<ListItem> = messages.iter().enumerate().map(|(i, msg)| {
-        let styled = Text::from(format!("{}: {}", msg.username.clone(), msg.content));
-        ListItem::new(styled)
-    }).collect();
+        let list = List::new(items)
+            .block(Block::default().title(chat_name.as_str()).borders(Borders::ALL))
+            .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
 
-    let list = List::new(items)
-        .block(Block::default().title(chat_name.as_str()).borders(Borders::ALL))
-        .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+        f.render_widget(list, chunks[0]);
 
-    f.render_widget(list, chunks[0]);
+        let new_chat = Paragraph::new(Text::from(input_buffer.clone()))
+            .block(Block::default().title("New Message").borders(Borders::ALL))
+            .style(Style::default().fg(Color::White).bg(Color::Black));
 
-    // New chat input field (active)
-    let new_chat = Paragraph::new(Text::from(input_buffer.clone()))
-        .block(Block::default().title("New Message").borders(Borders::ALL))
-        .style(Style::default().fg(Color::White).bg(Color::Black));
+        f.render_widget(new_chat, chunks[1]);
 
-    f.render_widget(new_chat, chunks[1]);
+        let combined_message = if app.message.is_empty() {
+            "Press [Esc] to return to chat list".to_string()
+        } else {
+            format!("{} | Press [Esc] to return to chat list", app.message)
+        };
 
-    let message = Paragraph::new(Text::from(app.message.clone())).style(Style::default());
-    f.render_widget(message, chunks[2]);
+        let message = Paragraph::new(Text::from(combined_message)).style(Style::default());
+        f.render_widget(message, chunks[2]);
+    } else {
+        let fallback = Paragraph::new("Invalid state or failed to load chat view")
+            .block(Block::default().title("Error").borders(Borders::ALL))
+            .style(Style::default().fg(Color::Red));
+        f.render_widget(fallback, chunks[0]);
+    }
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
@@ -57,13 +62,11 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 input_buffer.pop();
             }
             KeyCode::Enter => {
-                // Logic to send message goes here
-                // For example: call app.send_message(input_buffer.clone()).await;
-                // Then clear buffer:
+                // TODO: Send message logic here
                 input_buffer.clear();
             }
             KeyCode::Esc => {
-                app.state = FormState::UserMenu { selected_index: 0 };
+                app.state = FormState::Chats { selected_index: 0 };
             }
             _ => {}
         }

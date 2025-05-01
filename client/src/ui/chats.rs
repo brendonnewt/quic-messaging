@@ -43,7 +43,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
     f.render_widget(list, chunks[0]);
 
-    let add_chat = Paragraph::new(Text::from("[Enter] Add New Chat"))
+    let add_chat = Paragraph::new(Text::from("[Tab] Add New Chat"))
         .block(Block::default().title("New Chat").borders(Borders::ALL));
     f.render_widget(add_chat, chunks[1]);
 
@@ -60,6 +60,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     app.enter_chat_view(chat.id, chat.chat_name.clone(), 0, PAGE_SIZE).await;
                 }
             },
+            KeyCode::Tab => {
+                // TODO: NEW CHAT LOGIC
+            }
             KeyCode::Up => {
                 if selected_index > 0 {
                     app.set_user_menu_selected_index(selected_index - 1);

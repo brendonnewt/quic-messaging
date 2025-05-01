@@ -222,7 +222,7 @@ impl App {
                         match serde_json::from_value::<ChatMessages>(data) {
                             Ok(messages) => {
                                 self.state = FormState::Chat {
-                                    chat_name: chat_name,
+                                    chat_name,
                                     messages: messages.messages,
                                     page: 0,
                                     input_buffer: "".to_string(),

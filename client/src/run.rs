@@ -37,6 +37,9 @@ pub async fn run_app(
                 FormState::Chats { .. } => {
                     ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::Chat { .. } => {
+                    ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
                 _ => return,
             }
@@ -90,7 +93,7 @@ pub async fn run_app(
                 }
                 
                 FormState::Chat { .. } => {
-                    ui::chats::handle_input(app, key).await;
+                    ui::chat::handle_input(app, key).await;
                 },
 
                 // Any other state: do nothing

@@ -20,7 +20,8 @@ pub async fn add_friend(
     db: Arc<DatabaseConnection>,
 ) -> Result<ServerResponseModel, ServerError> {
     // TODO: SEND FRIEND REQUEST
-    Ok(ServerResponseModel{success: true})
+    user_service::send_friend_request(jwt, friend_id, db).await
+    //Ok(ServerResponseModel{success: true})
 }
 
 pub async fn remove_friend(jwt: String, friend_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {

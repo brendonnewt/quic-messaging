@@ -2,7 +2,7 @@ pub mod entity;
 pub mod handlers;
 pub mod utils;
 
-use crate::handlers::controllers::auth_controller;
+use crate::handlers::controllers::{auth_controller, user_controller};
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
@@ -106,6 +106,12 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
             let result = auth_controller::login(username, password, db.clone()).await;
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
+        }
+
+        Command::SendFriendRequest {receiver_id} => {
+            let jwt = req.jwt;
+            let result = user_controller::add_friend(jwt.clone().unwrap(), receiver_id, db.clone()).await;
+            build_response(result, jwt.clone(), "Friend Request Sent")
         }
         other => {
             // Shouldn't be possible, but covering the case.

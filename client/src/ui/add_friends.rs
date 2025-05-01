@@ -54,6 +54,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         _ => return,
     };
 
+    let app_jwt = app.jwt.clone();
+
     match key.code {
         Backspace => {
             id.pop();
@@ -65,7 +67,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
         Enter => {
             let req = ClientRequest {
-                jwt: None,
+                jwt: Option::from(app_jwt),
                 command: Command::SendFriendRequest {
                     receiver_id: id.clone().parse().unwrap(),
                 },

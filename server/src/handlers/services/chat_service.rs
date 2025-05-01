@@ -8,7 +8,7 @@ use shared::models::chat_models;
 use crate::utils::jwt;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
-use shared::models::chat_models::ChatList;
+use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages};
 use shared::models::user_models::User;
 
 // Create a new chat (group or direct)
@@ -91,7 +91,7 @@ pub async fn get_chat_messages(
     page: u64,
     page_size: u64,
     db: Arc<DatabaseConnection>,
-) -> Result<Vec<entity::messages::Model>, ServerError> {
+) -> Result<ChatMessages, ServerError> {
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let user_id = claim.claims.user_id;
 
@@ -104,7 +104,17 @@ pub async fn get_chat_messages(
 
     let messages =
         chat_repository::get_paginated_messages(chat_id, page, page_size, db.clone()).await?;
-    Ok(messages)
+    
+    let messages: Vec<ChatMessage> = messages.iter().map(|msg| ChatMessage {
+        user_id,
+        username: msg.sender_username.clone(),
+        content: msg.content.clone(),
+    }).collect();
+    
+    Ok(ChatMessages {
+        id: chat_id,
+        messages: messages,
+    })
 }
 
 // Mark messages as read (per-user tracking)

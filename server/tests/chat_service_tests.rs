@@ -47,8 +47,8 @@ mod tests {
         assert!(send_result.is_ok());
 
         let messages = chat_service::get_chat_messages(jwt.clone(), chat.id, 0, 10, db.clone()).await.unwrap();
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].content, "Hello World!");
+        assert_eq!(messages.messages.len(), 1);
+        assert_eq!(messages.messages[0].content, "Hello World!");
     }
 
     #[tokio::test]

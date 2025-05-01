@@ -5,6 +5,7 @@ use sea_orm::{
     QueryOrder, QuerySelect, Set,
 };
 use std::sync::Arc;
+use shared::models::user_models::User;
 use utils::errors::server_error::ServerError;
 
 pub async fn create_new_chat(
@@ -53,6 +54,87 @@ pub async fn is_user_chat_member(chat_id: i32, user_id: i32, db: Arc<DatabaseCon
         false
     }
 }
+
+use std::collections::HashMap;
+
+pub async fn get_user_chats(
+    user_id: i32,
+    db: Arc<DatabaseConnection>,
+) -> Result<Vec<entity::chats::Model>, ServerError> {
+    // Get all chat IDs the user is in
+    let chat_ids: Vec<i32> = entity::chat_members::Entity::find()
+        .filter(entity::chat_members::Column::UserId.eq(user_id))
+        .select_only()
+        .column(entity::chat_members::Column::ChatId)
+        .into_tuple()
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    // Get chats
+    let chats: Vec<entity::chats::Model> = entity::chats::Entity::find()
+        .filter(entity::chats::Column::Id.is_in(chat_ids.clone()))
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    // Get latest message per chat
+    let last_messages: Vec<entity::messages::Model> = entity::messages::Entity::find()
+        .filter(entity::messages::Column::ChatId.is_in(chat_ids))
+        .select_only()
+        .columns([entity::messages::Column::ChatId, entity::messages::Column::Timestamp])
+        .order_by_desc(entity::messages::Column::Timestamp)
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    // Map of chat_id -> last timestamp
+    let mut latest_by_chat: HashMap<i32, chrono::NaiveDateTime> = HashMap::new();
+    for msg in last_messages {
+        latest_by_chat.entry(msg.chat_id).or_insert(msg.timestamp);
+    }
+
+    // Sort chats by last message timestamp descending
+    let mut chats = chats;
+    chats.sort_by_key(|chat| {
+        // Default to the chat's created_at if no message
+        std::cmp::Reverse(latest_by_chat.get(&chat.id).cloned().unwrap_or(chat.created_at))
+    });
+
+    Ok(chats)
+}
+
+
+pub async fn get_other_usernames_in_chat(
+    chat_id: i32,
+    current_user_id: i32,
+    db: Arc<DatabaseConnection>,
+) -> Result<Vec<String>, ServerError> {
+    // Get all user IDs in the chat except the current user
+    let user_ids: Vec<i32> = entity::chat_members::Entity::find()
+        .filter(entity::chat_members::Column::ChatId.eq(chat_id))
+        .filter(entity::chat_members::Column::UserId.ne(current_user_id))
+        .select_only()
+        .column(entity::chat_members::Column::UserId)
+        .into_tuple()
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    // Fetch the usernames for those user IDs
+    let users = entity::users::Entity::find()
+        .filter(entity::users::Column::Id.is_in(user_ids))
+        .select_only()
+        .column(entity::users::Column::Username)
+        .into_tuple()
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    Ok(users)
+}
+
+
 
 pub async fn get_paginated_messages(
     chat_id: i32,

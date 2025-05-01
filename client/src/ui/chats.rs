@@ -20,18 +20,19 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         ])
         .split(f.size());
 
-    let chats: Vec<String> = Vec::new(); //app.get_chats(); // Your getter function
     let selected = if let FormState::Chats { selected_index } = app.state {
         selected_index
-    } else { 0 };
+    } else {
+        0
+    };
 
-    let items: Vec<ListItem> = chats.iter().enumerate().map(|(i, chat)| {
+    let items: Vec<ListItem> = app.chats.iter().enumerate().map(|(i, chat)| {
         let style = if i == selected {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
-        ListItem::new(chat.clone()).style(style)
+        ListItem::new(chat.chat_name.clone()).style(style)
     }).collect();
 
     let list = List::new(items)
@@ -47,6 +48,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let message = Paragraph::new(Text::from(app.message.clone())).style(Style::default());
     f.render_widget(message, chunks[2]);
 }
+
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     if let FormState::Chats { selected_index } = app.state {

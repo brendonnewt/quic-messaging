@@ -2191,6 +2191,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "dotenvy",
+ "futures",
  "jsonwebtoken",
  "lazy_static",
  "quinn",

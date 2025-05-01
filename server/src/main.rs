@@ -2,7 +2,7 @@ pub mod entity;
 pub mod handlers;
 pub mod utils;
 
-use crate::handlers::controllers::auth_controller;
+use crate::handlers::controllers::{auth_controller, chat_controller};
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
@@ -106,6 +106,15 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
             let result = auth_controller::login(username, password, db.clone()).await;
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
+        }
+        
+        Command::GetChats => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_user_chats(jwt, db.clone()).await, None, "Chat List")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+            
         }
         other => {
             // Shouldn't be possible, but covering the case.
@@ -218,6 +227,9 @@ async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
 async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, ServerError> {
     match serde_json::from_slice(&buf) {
         Ok(r) => Ok(r),
-        Err(_) => Err(ServerError::RequestInvalid("Invalid JSON".to_string())),
+        Err(e) => {
+            println!("{}", e.to_string());
+            Err(ServerError::RequestInvalid("Invalid JSON".to_string()))
+        },
     }
 }

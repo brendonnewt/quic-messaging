@@ -1,11 +1,15 @@
 use crate::entity;
+use futures::future::join_all;
 use crate::handlers::repositories::chat_repository;
-use crate::handlers::repositories::chat_repository::get_read_entry;
+use crate::handlers::repositories::chat_repository::{get_other_usernames_in_chat, get_read_entry};
 use crate::utils::errors::server_error::ServerError;
 use shared::models::server_models::ServerResponseModel;
+use shared::models::chat_models;
 use crate::utils::jwt;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
+use shared::models::chat_models::ChatList;
+use shared::models::user_models::User;
 
 // Create a new chat (group or direct)
 pub async fn create_chat(
@@ -46,6 +50,38 @@ pub async fn send_message(
 
     chat_repository::send_message(chat_id, sender_id, content, db.clone()).await?;
     Ok(ServerResponseModel { success: true })
+}
+
+pub async fn get_user_chats(jwt: String, db: Arc<DatabaseConnection>) -> Result<ChatList, ServerError> {
+    let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
+    let user_id = claim.claims.user_id;
+
+    let chats = chat_repository::get_user_chats(user_id, db.clone()).await?;
+
+    let futures = chats.into_iter().map(|c| {
+        let db = db.clone();
+        async move {
+            let name = if let Some(name) = &c.name {
+                name.clone()
+            } else {
+                match get_other_usernames_in_chat(c.id, user_id, db.clone()).await {
+                    Ok(usernames) => usernames.join(", "),
+                    Err(_) => String::new(),
+                }
+            };
+
+            chat_models::Chat {
+                id: c.id,
+                chat_name: name,
+            }
+        }
+    });
+
+    let chat_results: Vec<chat_models::Chat> = join_all(futures).await;
+    
+    Ok(ChatList {
+        chats: chat_results,
+    })
 }
 
 // Get messages in a chat

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
 use shared::client_response::{ClientRequest, Command};
+use shared::models::chat_models::Chat;
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -43,6 +44,7 @@ pub struct App {
     pub username: String,
     pub jwt: String,
     pub list_state: ListState,
+    pub chats: Vec<Chat>,
 }
 
 impl App {
@@ -56,6 +58,7 @@ impl App {
             username: "".to_string(),
             jwt: "".to_string(),
             list_state: ListState::default(),
+            chats: Vec::new(),
         }
     }
 
@@ -160,6 +163,41 @@ impl App {
             *s = selected_index;
         }
     }
+
+    pub async fn enter_chats_view(&mut self) {
+        self.message = "Loading chats...".to_string();
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::GetChats,
+        };
+
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<Vec<Chat>>(data) {
+                            Ok(chats) => {
+                                self.chats = chats;
+                                self.state = FormState::Chats { selected_index: 0 };
+                                self.message = "".into();
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No chat data returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get chats".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+    }
+
 }
 
 impl FormState {

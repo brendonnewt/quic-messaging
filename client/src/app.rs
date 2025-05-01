@@ -2,7 +2,7 @@ use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
 use shared::client_response::{ClientRequest, Command};
-use shared::models::chat_models::Chat;
+use shared::models::chat_models::{Chat, ChatList};
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -175,9 +175,9 @@ impl App {
             Ok(response) => {
                 if response.success {
                     if let Some(data) = response.data {
-                        match serde_json::from_value::<Vec<Chat>>(data) {
+                        match serde_json::from_value::<ChatList>(data) {
                             Ok(chats) => {
-                                self.chats = chats;
+                                self.chats = chats.chats;
                                 self.state = FormState::Chats { selected_index: 0 };
                                 self.message = "".into();
                             }

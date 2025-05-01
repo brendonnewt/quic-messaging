@@ -9,6 +9,8 @@ use ratatui::{
     Frame,
 };
 
+const PAGE_SIZE: u64 = 10;
+
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -53,14 +55,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     if let FormState::Chats { selected_index } = app.state {
         match key.code {
-            KeyCode::Enter | KeyCode::Char('\r') => match selected_index {
-                0 => app.state = FormState::Chats { selected_index: 0 }, // index 0 = Chats
-                // 1 => app.state = FormState::Chatroom,
-                // 2 => app.state = FormState::AddFriends,
-                // 3 => app.state = FormState::FriendList,
-                // 4 => app.state = FormState::Settings,
-                5 => app.set_main_menu(), // Log Out
-                _ => {}
+            KeyCode::Enter | KeyCode::Char('\r') =>  {
+                if let Some(chat) = app.chats.get(selected_index) {
+                    app.enter_chat_view(chat.id, chat.chat_name.clone(), 0, PAGE_SIZE).await;
+                }
             },
             KeyCode::Up => {
                 if selected_index > 0 {

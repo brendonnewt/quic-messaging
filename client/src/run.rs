@@ -87,6 +87,10 @@ pub async fn run_app(
                 
                 FormState::Chats { .. } => {
                     ui::chats::handle_input(app, key).await;
+                }
+                
+                FormState::Chat { .. } => {
+                    ui::chats::handle_input(app, key).await;
                 },
 
                 // Any other state: do nothing

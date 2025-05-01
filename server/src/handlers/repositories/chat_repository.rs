@@ -81,8 +81,6 @@ pub async fn get_user_chats(
     // Get latest message per chat
     let last_messages: Vec<entity::messages::Model> = entity::messages::Entity::find()
         .filter(entity::messages::Column::ChatId.is_in(chat_ids))
-        .select_only()
-        .columns([entity::messages::Column::ChatId, entity::messages::Column::Timestamp])
         .order_by_desc(entity::messages::Column::Timestamp)
         .all(&*db)
         .await

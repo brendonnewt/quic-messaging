@@ -8,6 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
+use unicode_width::UnicodeWidthStr;
 use shared::client_response::ClientRequest;
 use shared::client_response::Command::SendMessage;
 use shared::models::chat_models::{ChatMessage, ChatMessages};
@@ -46,9 +47,23 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
         f.render_widget(chat_paragraph, chunks[0]);
 
+        let scroll_offset = input_buffer.len().saturating_sub(chunks[1].width as usize - 4); // account for borders
+
         let new_chat = Paragraph::new(Text::from(input_buffer.clone()))
             .block(Block::default().title("New Message").borders(Borders::ALL))
-            .style(Style::default().fg(Color::White).bg(Color::Black));
+            .style(Style::default().fg(Color::White).bg(Color::Black))
+            .scroll((0, scroll_offset as u16));
+
+        // Calculate the maximum width for text inside the block (excluding borders)
+        let inner_width = chunks[1].width.saturating_sub(2);
+
+        // Determine how far the cursor should go (clamp it inside the box)
+        let cursor_offset = input_buffer.width().min(inner_width as usize - 1);
+
+        // Set cursor just before the right border
+        let cursor_x = chunks[1].x + 1 + cursor_offset as u16;
+        let cursor_y = chunks[1].y + 1;
+        f.set_cursor(cursor_x, cursor_y);
 
         f.render_widget(new_chat, chunks[1]);
 

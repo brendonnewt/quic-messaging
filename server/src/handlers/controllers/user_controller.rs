@@ -3,7 +3,7 @@ use sea_orm::DatabaseConnection;
 use crate::handlers::services::{user_service};
 use crate::utils::errors::server_error::ServerError;
 use shared::models::server_models::ServerResponseModel;
-use shared::models::user_models::{User, UserList};
+use shared::models::user_models::{FriendRequestList, User, UserList};
 
 pub async fn get_user_info(
     jwt: String,
@@ -31,4 +31,8 @@ pub async fn remove_friend(jwt: String, friend_id: i32, db: Arc<DatabaseConnecti
 pub async fn get_friends(jwt: String, db: Arc<DatabaseConnection>) -> Result<UserList, ServerError> {
     // Returns UserList of friends, which is a JSON vector of User JSON models
     user_service::get_friends(jwt, db).await
+}
+
+pub async fn get_friend_requests(jwt: String, db: Arc<DatabaseConnection>) -> Result<FriendRequestList, ServerError> {
+    user_service::get_friend_requests(jwt, db).await
 }

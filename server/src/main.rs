@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<sea_orm::DatabaseConnection>, logged_in: Arc<DashMap<String, ()>>) {
+async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<String, ()>>) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
@@ -108,6 +108,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
+            // User is automatically logged in upon registration
             if result.is_ok() {
                 logged_in.insert(username, ());
             }
@@ -130,6 +131,13 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             let result = user_controller::add_friend(jwt.clone().unwrap(), receiver_id, db.clone()).await;
             build_response(result, jwt.clone(), "Friend Request Sent")
         }
+
+        Command::GetFriendRequests {} => {
+            let jwt = req.jwt;
+            let result = user_controller::get_friend_requests(jwt.clone().unwrap(), db.clone()).await;
+            build_response(result, jwt.clone(), "Friend Request List Sent")
+        }
+
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(

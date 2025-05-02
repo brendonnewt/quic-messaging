@@ -3,3 +3,4 @@ pub mod login;
 pub mod registration;
 pub mod user_menu;
 pub mod add_friends;
+pub mod friends_menu;

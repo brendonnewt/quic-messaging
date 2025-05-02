@@ -37,6 +37,9 @@ pub async fn run_app(
                 FormState::AddFriend { .. } => {
                     ui::add_friends::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::FriendMenu { .. } => {
+                    ui::friends_menu::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
             }
         })?;
@@ -61,6 +64,7 @@ pub async fn run_app(
                 FormState::AddFriend { .. } => {
                     ui::add_friends::handle_input(app, key).await;
                 }
+
 
                 // Main menu navigation
                 FormState::MainMenu => match key.code {
@@ -100,7 +104,7 @@ pub async fn run_app(
                             0 => { /* Chats */ }
                             1 => { /* Chatroom */ }
                             2 => { app.set_add_friend() }
-                            3 => { /* Friend List */ }
+                            3 => { app.set_friend_menu() }
                             4 => { /* Settings */ }
                             5 => app.set_main_menu(), // Log Out -> back to main menu
                             _ => {}
@@ -111,6 +115,31 @@ pub async fn run_app(
                     }
                     _ => {}
                 },
+
+                FormState::FriendMenu { selected_index } => match key.code {
+                    KeyCode::Up => {
+                        if *selected_index > 0 {
+                            *selected_index -= 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if *selected_index < 2 {
+                            *selected_index += 1;
+                        }
+                    }
+                    KeyCode::Enter | KeyCode::Char('\r') => {
+                        match *selected_index {
+                            0 => { /* Friend List */ }
+                            1 => { /* Requests */ }
+                            2 => { /* Remove Friends */ }
+                            _ => {}
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.set_user_menu();
+                    }
+                    _ => {}
+                }
 
                 // Any other state: do nothing
                 _ => {}

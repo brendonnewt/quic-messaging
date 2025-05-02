@@ -32,6 +32,9 @@ pub enum FormState {
         id: String,
         active_field: ActiveField,
     },
+    FriendMenu {
+        selected_index: usize,
+    },
     Exit,
 }
 
@@ -111,6 +114,10 @@ impl App {
             id: String::new(),
             active_field: ActiveField::Username,
         };
+    }
+
+    pub fn set_friend_menu(&mut self) {
+        self.state = FormState::FriendMenu {selected_index: 0}
     }
 
     // Add the set_exit method

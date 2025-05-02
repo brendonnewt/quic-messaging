@@ -30,24 +30,21 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         messages,
         input_buffer,
     } = &mut app.state {
-        let items: Vec<ListItem> = messages
+        use ratatui::text::{Line, Span};
+
+        let lines: Vec<Line> = messages
             .iter()
             .rev()
             .map(|msg| {
-                let line = format!("{}: {}", msg.username, msg.content);
-                ListItem::new(Text::from(line))
+                Line::from(Span::raw(format!("{}: {}", msg.username, msg.content)))
             })
             .collect();
 
-        let list = List::new(items)
-            .block(
-                Block::default()
-                    .title(chat_name.as_str())
-                    .borders(Borders::ALL),
-            )
-            .highlight_style(Style::default().bg(Color::Yellow).fg(Color::Black));
+        let chat_paragraph = Paragraph::new(lines)
+            .block(Block::default().title(chat_name.as_str()).borders(Borders::ALL))
+            .wrap(ratatui::widgets::Wrap { trim: true });
 
-        f.render_widget(list, chunks[0]);
+        f.render_widget(chat_paragraph, chunks[0]);
 
         let new_chat = Paragraph::new(Text::from(input_buffer.clone()))
             .block(Block::default().title("New Message").borders(Borders::ALL))

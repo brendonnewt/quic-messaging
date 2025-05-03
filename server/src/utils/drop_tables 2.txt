@@ -1,0 +1,8 @@
+drop table chat_members;
+drop table messages;
+drop table message_reads;
+drop table chats;
+drop table blocked_users;
+drop table friend_requests;
+drop table friends;
+drop table users;

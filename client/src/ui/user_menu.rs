@@ -68,9 +68,16 @@ pub fn handle_input(app: &mut App, input: KeyEvent) {
                     1 => println!("Navigating to Chatroom..."),
                     2 => println!("Navigating to Add Friends..."),
                     3 => println!("Navigating to Friend List..."),
-                    4 => println!("Navigating to Profile..."),
-                    5 => println!("Navigating to Settings..."),
-                    6 => println!("Logging out..."),
+                    4 => {
+                        if let Some(profile) = &app.profile {
+                            app.set_profile_view(profile.clone());
+                        } else {
+                            println!("No profile loaded.");
+                        }
+                    }
+                    5 => {
+                        app.state = FormState::MainMenu;
+                    }
                     _ => println!("Invalid selection"),
                 }
             }

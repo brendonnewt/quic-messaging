@@ -54,15 +54,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         FormState::RegisterForm { username, .. } => username.clone(),
         _ => String::new(),
     }))
-    .block(Block::default().borders(Borders::ALL).title("Username"))
-    .style(username_style);
+        .block(Block::default().borders(Borders::ALL).title("Username"))
+        .style(username_style);
 
     let password = Paragraph::new(Text::from("*".repeat(match &app.state {
         FormState::RegisterForm { password, .. } => password.len(),
         _ => 0,
     })))
-    .block(Block::default().borders(Borders::ALL).title("Password"))
-    .style(password_style);
+        .block(Block::default().borders(Borders::ALL).title("Password"))
+        .style(password_style);
 
     let confirm = Paragraph::new(Text::from("*".repeat(match &app.state {
         FormState::RegisterForm {
@@ -70,12 +70,12 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         } => confirm_password.len(),
         _ => 0,
     })))
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title("Confirm Password"),
-    )
-    .style(confirm_style);
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Confirm Password"),
+        )
+        .style(confirm_style);
 
     let message = Paragraph::new(app.message.clone()).style(Style::default());
 

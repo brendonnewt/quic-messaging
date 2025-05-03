@@ -38,7 +38,6 @@ pub enum FormState {
         date_joined: String,
     },
     Exit,
-    SettingsView,
 }
 
 pub struct App {
@@ -50,6 +49,21 @@ pub struct App {
     pub username: String,
     pub jwt: String,
     pub list_state: ListState,
+    pub profile: Option<Profile>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Profile {
+    pub username: String,
+    pub full_name: String,
+    pub email: String,
+    pub phone: Option<String>,
+    pub bio: Option<String>,
+    pub location: Option<String>,
+    pub date_joined: String,
+    pub password: String,
+    pub dob: String,
+    pub date_added: String,
 }
 
 impl App {
@@ -63,6 +77,7 @@ impl App {
             username: "".to_string(),
             jwt: "".to_string(),
             list_state: ListState::default(),
+            profile: None, // Profile is initially None
         }
     }
 
@@ -74,7 +89,7 @@ impl App {
         let len = (bytes.len() as u32).to_be_bytes();
 
         let (mut send, mut recv) = self.conn.open_bi().await?;
-        
+
         send.write_all(&len).await?;
         send.write_all(&bytes).await?;
         send.finish().await?;
@@ -88,6 +103,34 @@ impl App {
         let response = serde_json::from_slice(&resp_buf)?;
 
         Ok(response)
+    }
+
+    // Register a new user
+    pub async fn register_user(&mut self, username: String, password: String) {
+        let req = ClientRequest {
+            jwt: None,
+            command: Command::Register {
+                username: username.clone(),
+                password: password.clone(),
+            },
+        };
+
+        match self.send_request(&req).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(jwt) = response.jwt.clone() {
+                        self.jwt = jwt;
+                        self.username = username.clone();
+                        self.state = FormState::UserMenu { selected_index: 0 };
+                    }
+                } else if let Some(message) = response.message.clone() {
+                    self.message = message;
+                }
+            }
+            Err(err) => {
+                self.message = err.to_string();
+            }
+        }
     }
 
     // Switch states
@@ -140,6 +183,19 @@ impl App {
         self.list_state.select(Some(0));
     }
 
+    pub fn set_profile_view(&mut self, profile: Profile) {
+        self.state = FormState::ProfileView {
+            username: profile.username.clone(),
+            full_name: profile.full_name.clone(),
+            email: profile.email.clone(),
+            phone: profile.phone.clone(),
+            bio: profile.bio.clone(),
+            location: profile.location.clone(),
+            date_joined: profile.date_joined.clone(),
+        };
+        self.profile = Some(profile); // Store profile information
+    }
+
     // Setters for LoginForm and RegisterForm fields
     pub fn set_username(&mut self, username: String) {
         match &mut self.state {
@@ -168,33 +224,6 @@ impl App {
             *s = selected_index;
         }
     }
-
-
-    pub fn set_profile_view(
-        &mut self,
-        username: String,
-        full_name: String,
-        email: String,
-        phone: Option<String>,
-        bio: Option<String>,
-        location: Option<String>,
-        date_joined: String,
-    ) {
-        self.state = FormState::ProfileView {
-            username,
-            full_name,
-            email,
-            phone,
-            bio,
-            location,
-            date_joined,
-        };
-    }
-
-    pub fn set_settings_view(&mut self) {
-        self.state = FormState::SettingsView;
-    }
-
 }
 
 impl FormState {

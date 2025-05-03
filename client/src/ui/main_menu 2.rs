@@ -34,6 +34,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         "Chatroom",
         "Add Friends",
         "Friend List",
+        "Profile",
         "Settings",
         "Log Out",
         "Close"

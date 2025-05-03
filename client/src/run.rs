@@ -35,6 +35,7 @@ pub async fn run_app(
                     ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
                 }
                 FormState::Exit => return, // stops drawing, we’ll break below
+                _ => {}
             }
         })?;
 

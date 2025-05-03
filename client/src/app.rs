@@ -28,7 +28,17 @@ pub enum FormState {
     UserMenu {
         selected_index: usize,
     },
+    ProfileView {
+        username: String,
+        full_name: String,
+        email: String,
+        phone: Option<String>,
+        bio: Option<String>,
+        location: Option<String>,
+        date_joined: String,
+    },
     Exit,
+    SettingsView,
 }
 
 pub struct App {
@@ -157,6 +167,33 @@ impl App {
             *s = selected_index;
         }
     }
+
+
+    pub fn set_profile_view(
+        &mut self,
+        username: String,
+        full_name: String,
+        email: String,
+        phone: Option<String>,
+        bio: Option<String>,
+        location: Option<String>,
+        date_joined: String,
+    ) {
+        self.state = FormState::ProfileView {
+            username,
+            full_name,
+            email,
+            phone,
+            bio,
+            location,
+            date_joined,
+        };
+    }
+
+    pub fn set_settings_view(&mut self) {
+        self.state = FormState::SettingsView;
+    }
+
 }
 
 impl FormState {

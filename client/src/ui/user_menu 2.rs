@@ -8,7 +8,7 @@ use ratatui::{
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
+    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Profile", "Settings", "Log Out"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)

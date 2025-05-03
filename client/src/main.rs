@@ -18,6 +18,7 @@ use std::time::{Duration, SystemTime};
 use tracing_subscriber::prelude::*;
 
 struct TestVerifier;
+
 impl ServerCertVerifier for TestVerifier {
     fn verify_server_cert(
         &self,
@@ -33,10 +34,18 @@ impl ServerCertVerifier for TestVerifier {
 }
 
 #[tokio::main]
-async fn main()  -> Result<(), Box<dyn Error>>{
+async fn main() -> Result<(), Box<dyn Error>> {
+    println!("Starting the client...");
+
     let mut serv_addr = utils::constants::SERVER_ADDR.to_owned();
-    // QUIC Client
-    let rustls_cfg = RustlsClientConfig::builder().with_safe_defaults().with_custom_certificate_verifier(Arc::new(TestVerifier)).with_no_client_auth();
+    println!("Server address: {}", serv_addr);
+
+    // QUIC Client setup
+    println!("Setting up Rustls configuration...");
+    let rustls_cfg = RustlsClientConfig::builder()
+        .with_safe_defaults()
+        .with_custom_certificate_verifier(Arc::new(TestVerifier))
+        .with_no_client_auth();
     let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));
 
     let mut transport_config = TransportConfig::default();
@@ -47,17 +56,27 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     );
     transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
 
-    client_cfg.transport_config( Arc::new(transport_config) );
+    client_cfg.transport_config(Arc::new(transport_config));
 
     let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
     endpoint.set_default_client_config(client_cfg);
+    println!("Client endpoint configured.");
 
     let port = format!("{}:{}", serv_addr, "8080");
+    println!("Connecting to server at: {}", port);
     let server_addr: SocketAddr = port.parse()?;
     let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
+
+    // Connection established
+    println!("Connected to server successfully!");
+
     let conn = Arc::new(new_conn);
+    println!("Client connection established.");
 
     let mut app = App::new(conn);
+    println!("Running app...");
     run_app(&mut app).await?;
+
+    println!("Client finished.");
     Ok(())
 }

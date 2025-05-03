@@ -8,11 +8,11 @@ use ratatui::{
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
+    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Profile", "Settings", "Log Out"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
-        .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
+        .constraints(vec![Constraint::Length(3); 7].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
         .split(f.size());
 
     let selected = if let FormState::UserMenu { selected_index } = app.state {

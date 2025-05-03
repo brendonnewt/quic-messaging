@@ -149,6 +149,23 @@ pub async fn get_paginated_messages(
     Ok(messages)
 }
 
+pub async fn get_chat_page_count(
+    chat_id: i32,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<u64, ServerError> {
+
+    let total_messages = entity::messages::Entity::find()
+        .filter(entity::messages::Column::ChatId.eq(chat_id))
+        .count(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    let page_count = (total_messages + page_size - 1) / page_size; // round up division
+
+    Ok(page_count)
+}
+
 pub async fn send_message(
     chat_id: i32,
     sender_id: i32,

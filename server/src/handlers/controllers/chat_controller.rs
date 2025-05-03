@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;
-use shared::models::chat_models::{ChatList, ChatMessages};
+use shared::models::chat_models::{ChatList, ChatMessages, PageCount};
 use crate::handlers::services::{chat_service};
 use crate::utils::errors::server_error::ServerError;
 use shared::models::server_models::ServerResponseModel;
@@ -27,4 +27,8 @@ pub async fn get_chat_messages(
 
 pub async fn send_message(jwt: String, chat_id: i32, content: String, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
     chat_service::send_message(jwt, chat_id, content, db.clone()).await
+}
+
+pub async fn get_chat_page_count(jwt: String, chat_id: i32, page_size: u64, db: Arc<DatabaseConnection>) -> Result<PageCount, ServerError> {
+    chat_service::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await
 }

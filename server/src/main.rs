@@ -131,6 +131,14 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
+        
+        Command::GetChatPages { chat_id, page_size } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await, None, "Chat Page Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(

@@ -2,7 +2,8 @@ use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
 use shared::client_response::{ClientRequest, Command};
-use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages};
+use shared::client_response::Command::GetChatPages;
+use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, PageCount};
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -36,6 +37,7 @@ pub enum FormState {
         chat_name: String,
         chat_id: i32,
         page: usize,
+        page_count: u64,
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
@@ -211,43 +213,80 @@ impl App {
         self.message = "Loading chat...".to_string();
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
-            command: Command::GetChatMessages {
+            command: Command::GetChatPages {
                 chat_id,
-                page,
                 page_size,
-            },
+            }
         };
 
+        let mut page_count = None;
         match self.send_request(&request).await {
             Ok(response) => {
                 if response.success {
                     if let Some(data) = response.data {
-                        match serde_json::from_value::<ChatMessages>(data) {
-                            Ok(messages) => {
-                                self.state = FormState::Chat {
-                                    chat_name,
-                                    chat_id,
-                                    messages: messages.messages,
-                                    page: 0,
-                                    input_buffer: "".to_string(),
-                                };
-                                self.message = "".into();
+                        match serde_json::from_value::<PageCount>(data) {
+                            Ok(count) => {
+                                page_count = Some(count.page_count)
                             }
                             Err(e) => {
                                 self.message = format!("Parse error: {}", e);
                             }
                         }
                     } else {
-                        self.message = "No chat data returned".into();
+                        self.message = "No page count returned".into();
                     }
                 } else {
-                    self.message = response.message.unwrap_or("Failed to get chats".into());
+                    self.message = response.message.unwrap_or("Failed to get chat".into());
                 }
             }
             Err(err) => {
                 self.message = format!("Error: {}", err);
             }
         }
+        
+        if let Some(page_count) = page_count {
+            let request = ClientRequest {
+                jwt: Some(self.jwt.clone()),
+                command: Command::GetChatMessages {
+                    chat_id,
+                    page,
+                    page_size,
+                },
+            };
+
+            match self.send_request(&request).await {
+                Ok(response) => {
+                    if response.success {
+                        if let Some(data) = response.data {
+                            match serde_json::from_value::<ChatMessages>(data) {
+                                Ok(messages) => {
+                                    self.state = FormState::Chat {
+                                        chat_name,
+                                        chat_id,
+                                        page_count,
+                                        messages: messages.messages,
+                                        page: 0,
+                                        input_buffer: "".to_string(),
+                                    };
+                                    self.message = "".into();
+                                }
+                                Err(e) => {
+                                    self.message = format!("Parse error: {}", e);
+                                }
+                            }
+                        } else {
+                            self.message = "No chat data returned".into();
+                        }
+                    } else {
+                        self.message = response.message.unwrap_or("Failed to get chats".into());
+                    }
+                }
+                Err(err) => {
+                    self.message = format!("Error: {}", err);
+                }
+            }
+        }
+        
     }
 
 }

@@ -53,6 +53,10 @@ pub enum Command {
         page: u64,
         page_size: u64,
     },
+    GetChatPages {
+        chat_id: i32,
+        page_size: u64,
+    },
     MarkMessagesRead {
         chat_id: i32,
     },

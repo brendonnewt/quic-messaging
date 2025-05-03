@@ -23,3 +23,8 @@ pub struct ChatMessage {
     pub username: String,
     pub content: String,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PageCount {
+    pub page_count: u64,
+}

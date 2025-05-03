@@ -8,7 +8,7 @@ use shared::models::chat_models;
 use crate::utils::jwt;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
-use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages};
+use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, PageCount};
 use shared::models::user_models::User;
 use crate::handlers::services::user_service;
 
@@ -121,6 +121,17 @@ pub async fn get_chat_messages(
     Ok(ChatMessages {
         id: chat_id,
         messages: messages,
+    })
+}
+
+pub async fn get_chat_page_count(jwt: String, chat_id: i32, page_size: u64, db: Arc<DatabaseConnection>) -> Result<PageCount, ServerError> {
+    // Ensure token provided is valid
+    let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
+
+    let pages = chat_repository::get_chat_page_count(chat_id, page_size, db.clone()).await?;
+
+    Ok(PageCount {
+        page_count: pages,
     })
 }
 

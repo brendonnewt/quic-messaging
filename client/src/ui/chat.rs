@@ -28,6 +28,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         chat_name,
         chat_id,
         page,
+        page_count,
         messages,
         input_buffer,
     } = &mut app.state {
@@ -47,7 +48,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
         f.render_widget(chat_paragraph, chunks[0]);
 
-        let scroll_offset = input_buffer.len().saturating_sub(chunks[1].width as usize - 4); // account for borders
+        let scroll_offset = input_buffer.len().saturating_sub(chunks[1].width.saturating_sub(4) as usize);
 
         let new_chat = Paragraph::new(Text::from(input_buffer.clone()))
             .block(Block::default().title("New Message").borders(Borders::ALL))

@@ -6,9 +6,10 @@ use ratatui::{
     Frame,
 };
 use crate::app::{App, FormState};
+use crossterm::event::{KeyCode, KeyEvent};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Profile", "Settings", "Log Out"];
+    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Profile", "Log Out"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
@@ -16,7 +17,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .split(f.size());
 
     let selected = if let FormState::UserMenu { selected_index } = app.state {
-        selected_index
+        selected_index.min(options.len() - 1) // Ensure the index is within bounds
     } else { 0 };
 
     let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
@@ -39,4 +40,46 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .split(f.size())[0];
 
     f.render_widget(list, area);
+}
+
+pub fn handle_input(app: &mut App, input: KeyEvent) {
+    match input.code {
+        KeyCode::Up => {
+            // Navigate up
+            if let FormState::UserMenu { selected_index } = &mut app.state {
+                if *selected_index > 0 {
+                    *selected_index -= 1;
+                }
+            }
+        }
+        KeyCode::Down => {
+            // Navigate down
+            if let FormState::UserMenu { selected_index } = &mut app.state {
+                if *selected_index < 6 { // 7 options, 0 to 6
+                    *selected_index += 1;
+                }
+            }
+        }
+        KeyCode::Enter => {
+            // Handle selection (Enter key press)
+            if let FormState::UserMenu { selected_index } = &mut app.state {
+                match *selected_index {
+                    0 => println!("Navigating to Chats..."),
+                    1 => println!("Navigating to Chatroom..."),
+                    2 => println!("Navigating to Add Friends..."),
+                    3 => println!("Navigating to Friend List..."),
+                    4 => println!("Navigating to Profile..."),
+                    5 => println!("Navigating to Settings..."),
+                    6 => println!("Logging out..."),
+                    _ => println!("Invalid selection"),
+                }
+            }
+        }
+        KeyCode::Esc => {
+            // Escape logic (Exit or go back to the previous menu)
+            println!("Exiting the menu...");
+            // You can add more logic for handling the back action if needed.
+        }
+        _ => {}
+    }
 }

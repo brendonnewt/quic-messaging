@@ -137,6 +137,7 @@ impl App {
 
     pub fn set_user_menu(&mut self) {
         self.state = FormState::UserMenu { selected_index: 0 };
+        self.list_state.select(Some(0));
     }
 
     // Setters for LoginForm and RegisterForm fields

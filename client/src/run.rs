@@ -95,8 +95,9 @@ pub async fn run_app(
                             1 => { /* Chatroom */ }
                             2 => { /* Add Friends */ }
                             3 => { /* Friend List */ }
-                            4 => { /* Settings */ }
-                            5 => app.set_main_menu(), // Log Out -> back to main menu
+                            4 => { /* Profile */ }
+                            5 => { /* Settings */ }
+                            6 => app.set_main_menu(), // Log Out -> back to main menu
                             _ => {}
                         }
                     }

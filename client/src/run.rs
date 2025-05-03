@@ -40,6 +40,9 @@ pub async fn run_app(
                 FormState::FriendMenu { .. } => {
                     ui::friends_menu::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::FriendRequests { .. } => {
+                    ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return, // stops drawing, we’ll break below
             }
         })?;
@@ -63,6 +66,10 @@ pub async fn run_app(
 
                 FormState::AddFriend { .. } => {
                     ui::add_friends::handle_input(app, key).await;
+                }
+
+                FormState::FriendMenu { .. } => {
+                    ui::friends_menu::handle_input(app, key).await;
                 }
 
 
@@ -115,31 +122,6 @@ pub async fn run_app(
                     }
                     _ => {}
                 },
-
-                FormState::FriendMenu { selected_index } => match key.code {
-                    KeyCode::Up => {
-                        if *selected_index > 0 {
-                            *selected_index -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if *selected_index < 2 {
-                            *selected_index += 1;
-                        }
-                    }
-                    KeyCode::Enter | KeyCode::Char('\r') => {
-                        match *selected_index {
-                            0 => { /* Friend List */ }
-                            1 => { /* Requests */ }
-                            2 => { /* Remove Friends */ }
-                            _ => {}
-                        }
-                    }
-                    KeyCode::Esc => {
-                        app.set_user_menu();
-                    }
-                    _ => {}
-                }
 
                 // Any other state: do nothing
                 _ => {}

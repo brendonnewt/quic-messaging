@@ -6,9 +6,11 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use crate::app::{App, FormState};
+use shared::client_response::{ClientRequest, Command};
+use crate::app::{App, FormState, ActiveField};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
+
     let options = ["Show Current Friends", "Friend Requests", "Remove Friends"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -16,7 +18,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
         .split(f.size());
 
-    let selected = if let FormState::FriendMenu { selected_index } = app.state {
+    let selected = if let FormState::FriendRequests { selected_index } = app.state {
         selected_index
     } else { 0 };
 
@@ -45,31 +47,5 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     use KeyCode::*;
 
-    if let FormState::FriendMenu { selected_index } = &mut app.state {
-        match key.code {
-            KeyCode::Up => {
-                if *selected_index > 0 {
-                    *selected_index -= 1;
-                }
-            }
-            KeyCode::Down => {
-                if *selected_index < 2 {
-                    *selected_index += 1;
-                }
-            }
-            KeyCode::Enter | KeyCode::Char('\r') => {
-                match *selected_index {
-                    0 => { /* Friend List */ }
-                    1 => { /* Requests */ }
-                    2 => { /* Remove Friends */ }
-                    _ => {}
-                }
-            }
-            KeyCode::Esc => {
-                app.set_user_menu();
-            }
-            _ => {}
-        }
-
-    }
+    //TODO: Have select friend request send an accept response
 }

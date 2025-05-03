@@ -35,6 +35,9 @@ pub enum FormState {
     FriendMenu {
         selected_index: usize,
     },
+    FriendRequests {
+        selected_index: usize,
+    },
     Exit,
 }
 

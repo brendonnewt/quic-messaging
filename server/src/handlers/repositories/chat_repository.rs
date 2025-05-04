@@ -1,9 +1,6 @@
 use crate::{entity, utils};
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectModel, Set};
 use std::sync::Arc;
 use shared::models::user_models::User;
 use utils::errors::server_error::ServerError;
@@ -132,8 +129,6 @@ pub async fn get_other_usernames_in_chat(
     Ok(users)
 }
 
-
-
 pub async fn get_paginated_messages(
     chat_id: i32,
     page: u64,
@@ -142,10 +137,12 @@ pub async fn get_paginated_messages(
 ) -> Result<Vec<entity::messages::Model>, ServerError> {
     let paginator = entity::messages::Entity::find()
         .filter(entity::messages::Column::ChatId.eq(chat_id))
-        .order_by_desc(entity::messages::Column::Timestamp)
+        .order_by_asc(entity::messages::Column::Timestamp)
         .paginate(&*db, page_size);
+    
+    let total = paginator.num_pages().await.map_err(ServerError::DatabaseError)?;
 
-    let messages: Vec<entity::messages::Model> = paginator.fetch_page(page).await?;
+    let messages: Vec<entity::messages::Model> = paginator.fetch_page(total - page - 1).await?;
     Ok(messages)
 }
 
@@ -154,16 +151,12 @@ pub async fn get_chat_page_count(
     page_size: u64,
     db: Arc<DatabaseConnection>,
 ) -> Result<u64, ServerError> {
-
-    let total_messages = entity::messages::Entity::find()
+    let paginator = entity::messages::Entity::find()
         .filter(entity::messages::Column::ChatId.eq(chat_id))
-        .count(&*db)
-        .await
-        .map_err(ServerError::DatabaseError)?;
+        .order_by_desc(entity::messages::Column::Timestamp)
+        .paginate(&*db, page_size);
 
-    let page_count = (total_messages + page_size - 1) / page_size; // round up division
-
-    Ok(page_count)
+    paginator.num_pages().await.map_err(|err| ServerError::DatabaseError(err))
 }
 
 pub async fn send_message(

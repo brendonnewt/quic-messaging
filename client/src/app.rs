@@ -40,6 +40,10 @@ pub enum FormState {
     FriendRequests {
         selected_index: usize,
     },
+    ConfirmFriendRequest {
+        selected_index: usize,
+        selected_option: usize, // Usize where 0 = accept and 1 = decline
+    },
     Exit,
 }
 
@@ -131,6 +135,13 @@ impl App {
 
     pub fn set_friend_requests(&mut self) {
         self.state = FormState::FriendRequests {selected_index: 0}
+    }
+
+    pub fn set_confirm_friend_request(&mut self, req_index: usize) {
+        self.state = FormState::ConfirmFriendRequest {
+            selected_index: req_index,
+            selected_option: 0,
+        };
     }
 
     // Add the set_exit method

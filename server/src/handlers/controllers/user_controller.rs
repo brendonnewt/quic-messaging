@@ -36,3 +36,11 @@ pub async fn get_friends(jwt: String, db: Arc<DatabaseConnection>) -> Result<Use
 pub async fn get_friend_requests(jwt: String, db: Arc<DatabaseConnection>) -> Result<FriendRequestList, ServerError> {
     user_service::get_friend_requests(jwt, db).await
 }
+
+pub async fn accept_friend_request(jwt: String, sender_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    user_service::accept_friend_request(jwt, sender_id, db).await
+}
+
+pub async fn decline_friend_request(jwt: String, sender_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    user_service::decline_friend_request(jwt, sender_id, db).await
+}

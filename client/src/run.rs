@@ -43,6 +43,9 @@ pub async fn run_app(
                 FormState::FriendRequests { .. } => {
                     ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::ConfirmFriendRequest { .. } => {
+                    ui::confirm_friend_request::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return,
             }
         })?;
@@ -74,6 +77,9 @@ pub async fn run_app(
 
                 FormState::FriendRequests { .. } => {
                     ui::friend_requests::handle_input(app, key).await;
+                }
+                FormState::ConfirmFriendRequest { .. } => {
+                    ui::confirm_friend_request::handle_input(app, key).await;
                 }
 
 

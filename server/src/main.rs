@@ -138,6 +138,18 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, jwt.clone(), "Friend Request List Sent")
         }
 
+        Command::AcceptFriendRequest {sender_id} => {
+            let jwt = req.jwt;
+            let result = user_controller::accept_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
+            build_response(result, jwt.clone(), "Friend Request Accepted")
+        }
+
+        Command::DeclineFriendRequest {sender_id} => {
+            let jwt = req.jwt;
+            let result = user_controller::decline_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
+            build_response(result, jwt.clone(), "Friend Request Denied")
+        }
+
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(

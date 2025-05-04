@@ -41,7 +41,6 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
         let lines: Vec<Line> = messages
             .iter()
-            .rev()
             .map(|msg| {
                 let name_span = if msg.username == app.username {
                     Span::styled(
@@ -181,21 +180,18 @@ pub async fn handle_enter(app: &mut App) {
         }
     };
     if response.success {
-        let (input_buffer, messages) = match &mut app.state {
+        let (input_buffer, chat_id) = match &mut app.state {
             FormState::Chat {
                 input_buffer,
-                messages,
+                chat_id,
                 ..
-            } => (input_buffer, messages),
+            } => (input_buffer, chat_id),
             _ => return,
         };
-        messages.insert(0, ChatMessage {
-            user_id,
-            username: app.username.clone(),
-            content: message_text,
-        });
         input_buffer.clear();
         app.message.clear();
+        let chat_id = *chat_id;
+        get_messages(app, chat_id, 0).await;
     } else {
         app.message = response.message.unwrap_or("Failed to send message".into());
     }

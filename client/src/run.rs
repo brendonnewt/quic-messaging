@@ -43,7 +43,7 @@ pub async fn run_app(
                 FormState::FriendRequests { .. } => {
                     ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
                 }
-                FormState::Exit => return, // stops drawing, we’ll break below
+                FormState::Exit => return,
             }
         })?;
 

@@ -11,7 +11,7 @@ use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Friend Requests", "Current Friends", "Remove Friends"];
-    let chunks = Layout::default()
+    Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
         .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
@@ -48,17 +48,17 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
     if let FormState::FriendMenu { selected_index } = &mut app.state {
         match key.code {
-            KeyCode::Up => {
+            Up => {
                 if *selected_index > 0 {
                     *selected_index -= 1;
                 }
             }
-            KeyCode::Down => {
+            Down => {
                 if *selected_index < 2 {
                     *selected_index += 1;
                 }
             }
-            KeyCode::Enter | KeyCode::Char('\r') => {
+            Enter | Char('\r') => {
                 match *selected_index {
                     0 => {
                         let req = ClientRequest {
@@ -86,7 +86,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     _ => {}
                 }
             }
-            KeyCode::Esc => {
+            Esc => {
                 app.set_user_menu();
             }
             _ => {}

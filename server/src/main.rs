@@ -156,6 +156,12 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, jwt.clone(), "Friend List Sent")
         }
 
+        Command::RemoveFriend {friend_id} => {
+            let jwt = req.jwt;
+            let result = user_controller::remove_friend(jwt.clone().unwrap(), friend_id, db.clone()).await;
+            build_response(result, jwt.clone(), "Unfriended")
+        }
+
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(

@@ -10,7 +10,7 @@ use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Friend Requests", "Current Friends", "Remove Friends"];
+    let options = ["Friend Requests", "Current Friends"];
     Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
@@ -102,7 +102,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         }
                         app.set_friend_list();
                     }
-                    2 => { /* Remove Friends */ }
                     _ => {}
                 }
             }

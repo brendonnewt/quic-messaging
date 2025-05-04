@@ -47,6 +47,10 @@ pub enum FormState {
     FriendList{
         selected_index: usize,
     },
+    ConfirmUnfriend {
+        selected_index: usize,
+        selected_option: usize,
+    },
     Exit,
 }
 
@@ -149,6 +153,13 @@ impl App {
             selected_index: req_index,
             selected_option: 0,
         };
+    }
+
+    pub fn set_confirm_unfriend(&mut self, req_index: usize) {
+        self.state = FormState::ConfirmUnfriend {
+            selected_index: req_index,
+            selected_option: 0,
+        }
     }
 
     pub fn set_friend_list(&mut self) {

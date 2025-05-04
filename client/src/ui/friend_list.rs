@@ -61,7 +61,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     app.set_friend_list_num(items.len());
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Friend List"))
+        .block(Block::default().borders(Borders::ALL).title("Friend List").title("Select Friend to Unfriend Them"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()
@@ -95,7 +95,14 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
 
-        Enter => {}
+        Enter => {
+            let idx = if let FormState::FriendList { selected_index } = &app.state {
+                *selected_index
+            } else {
+                return;
+            };
+            app.set_confirm_unfriend(idx);
+        }
 
         Esc => app.set_friend_menu(),
 

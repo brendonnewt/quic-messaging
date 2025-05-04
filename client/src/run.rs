@@ -49,6 +49,9 @@ pub async fn run_app(
                 FormState::FriendList { .. } => {
                     ui::friend_list::render::<CrosstermBackend<Stdout>>(f, app)
                 }
+                FormState::ConfirmUnfriend { .. } => {
+                    ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
+                }
                 FormState::Exit => return,
             }
         })?;
@@ -89,6 +92,9 @@ pub async fn run_app(
                     ui::friend_list::handle_input(app, key).await;
                 }
 
+                FormState::ConfirmUnfriend { .. } => {
+                    ui::confirm_unfriend::handle_input(app, key).await;
+                }
 
                 // Main menu navigation
                 FormState::MainMenu => match key.code {

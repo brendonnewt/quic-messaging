@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
+use rustls::Error;
 use shared::client_response::{ClientRequest, Command};
+use shared::models::user_models::FriendRequestList;
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -50,6 +52,8 @@ pub struct App {
     pub username: String,
     pub jwt: String,
     pub list_state: ListState,
+    pub friend_requests: Result<FriendRequestList, serde_json::Error>,
+    pub friend_request_num: usize,
 }
 
 impl App {
@@ -63,6 +67,8 @@ impl App {
             username: "".to_string(),
             jwt: "".to_string(),
             list_state: ListState::default(),
+            friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
+            friend_request_num: 0,
         }
     }
 
@@ -123,6 +129,10 @@ impl App {
         self.state = FormState::FriendMenu {selected_index: 0}
     }
 
+    pub fn set_friend_requests(&mut self) {
+        self.state = FormState::FriendRequests {selected_index: 0}
+    }
+
     // Add the set_exit method
     pub fn set_exit(&mut self) {
         self.state = FormState::Exit;
@@ -171,6 +181,10 @@ impl App {
         if let FormState::RegisterForm { confirm_password: c, .. } = &mut self.state {
             *c = confirm_password;
         }
+    }
+
+    pub fn set_friend_request_num(&mut self, friend_request_num: usize) {
+        self.friend_request_num = friend_request_num;
     }
 
     pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {

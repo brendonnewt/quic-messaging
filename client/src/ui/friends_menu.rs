@@ -6,10 +6,11 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
+use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Show Current Friends", "Friend Requests", "Remove Friends"];
+    let options = ["Friend Requests", "Current Friends", "Remove Friends"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
@@ -59,8 +60,28 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Enter | KeyCode::Char('\r') => {
                 match *selected_index {
-                    0 => { /* Friend List */ }
-                    1 => { /* Requests */ }
+                    0 => {
+                        let req = ClientRequest {
+                            jwt: Option::from(app.jwt.clone()),
+                            command: Command::GetFriendRequests {}
+                        };
+                        match app.send_request(&req).await {
+                            Ok(resp) => {
+                                if resp.success {
+                                    if let Some(data) = resp.data.clone() {
+                                        app.friend_requests = serde_json::from_value(resp.data.into())
+                                    }
+                                }else if let Some(message) = resp.message.clone() {
+                                    app.message = message;
+                                }
+                            },
+                            Err(e) => {
+                                app.message = e.to_string();
+                            }
+                        }
+                        app.set_friend_requests();
+                    }
+                    1 => { /* View Friends */ }
                     2 => { /* Remove Friends */ }
                     _ => {}
                 }

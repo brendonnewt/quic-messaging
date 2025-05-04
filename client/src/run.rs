@@ -72,6 +72,10 @@ pub async fn run_app(
                     ui::friends_menu::handle_input(app, key).await;
                 }
 
+                FormState::FriendRequests { .. } => {
+                    ui::friend_requests::handle_input(app, key).await;
+                }
+
 
                 // Main menu navigation
                 FormState::MainMenu => match key.code {

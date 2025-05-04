@@ -9,7 +9,7 @@ use ratatui::{
 use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, FormState, ActiveField};
 
-pub fn render<B: Backend>(f: &mut Frame, app: &App) {
+pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
     let options = ["Show Current Friends", "Friend Requests", "Remove Friends"];
     let chunks = Layout::default()
@@ -18,18 +18,31 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
         .split(f.size());
 
+    let fr_list = match &app.friend_requests {
+        Ok(list) => list,
+        Err(_)    => {
+            // Render an empty list
+            let empty = List::new(vec![ListItem::new("No requests")])
+                .block(Block::default().borders(Borders::ALL).title("Friend Requests"));
+            return f.render_widget(empty, f.size());
+        }
+    };
+
     let selected = if let FormState::FriendRequests { selected_index } = app.state {
         selected_index
     } else { 0 };
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
+    let items: Vec<ListItem> = fr_list.incoming.iter().enumerate().map(|(i, opt)| {
+        let display = opt.username.clone();
         let style = if i == selected {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
-        ListItem::new(opt).style(style)
+        ListItem::new(display).style(style)
     }).collect();
+
+    app.set_friend_request_num(items.len());
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("Your Menu"))
@@ -46,6 +59,30 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     use KeyCode::*;
+
+    if let FormState::FriendRequests {selected_index} = &mut app.state {
+        match key.code {
+            KeyCode::Up => {
+                if *selected_index > 0 {
+                    *selected_index -= 1;
+                }
+            }
+
+            KeyCode::Down => {
+                if *selected_index < app.friend_request_num {
+                    *selected_index += 1;
+                }
+            }
+
+            KeyCode::Enter => {}
+
+            KeyCode::Esc => {
+                app.set_friend_menu()
+            }
+
+            _ => {}
+        }
+    }
 
     //TODO: Have select friend request send an accept response
 }

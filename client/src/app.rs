@@ -36,7 +36,7 @@ pub enum FormState {
     Chat {
         chat_name: String,
         chat_id: i32,
-        page: usize,
+        page: u64,
         page_count: u64,
         input_buffer: String,
         messages: Vec<ChatMessage>,

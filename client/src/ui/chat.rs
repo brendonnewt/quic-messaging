@@ -8,21 +8,27 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
+use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 use shared::client_response::ClientRequest;
-use shared::client_response::Command::SendMessage;
-use shared::models::chat_models::{ChatMessage, ChatMessages};
+use shared::client_response::Command::{GetChatMessages, SendMessage};
+use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages};
+
+const PAGE_SIZE: u64 = 10;
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([
-            Constraint::Min(10),   // Messages list
-            Constraint::Length(3), // New message input
-            Constraint::Length(3), // Message area
+            Constraint::Min(9),     // Messages list
+            Constraint::Length(1),  // Page info
+            Constraint::Length(1),  // Spacer
+            Constraint::Length(3),  // New message input
+            Constraint::Length(3),  // Message area
         ])
         .split(f.size());
+
 
     if let FormState::Chat {
         chat_name,
@@ -32,13 +38,21 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         messages,
         input_buffer,
     } = &mut app.state {
-        use ratatui::text::{Line, Span};
 
         let lines: Vec<Line> = messages
             .iter()
             .rev()
             .map(|msg| {
-                Line::from(Span::raw(format!("{}: {}", msg.username, msg.content)))
+                let name_span = if msg.username == app.username {
+                    Span::styled(
+                        format!("{}: ", msg.username),
+                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    Span::raw(format!("{}: ", msg.username))
+                };
+                let content_span = Span::raw(&msg.content);
+                Line::from(vec![name_span, content_span])
             })
             .collect();
 
@@ -48,7 +62,11 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
         f.render_widget(chat_paragraph, chunks[0]);
 
-        let visible_width = chunks[1].width.saturating_sub(4) as usize;
+        let page_info = Paragraph::new(format!("Page {} of {}", *page + 1, *page_count))
+            .style(Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC));
+        f.render_widget(page_info, chunks[1]);
+
+        let visible_width = chunks[3].width.saturating_sub(4) as usize;
         let scroll_offset = if visible_width == 0 {
             0
         } else {
@@ -60,15 +78,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             .style(Style::default().fg(Color::White).bg(Color::Black))
             .scroll((0, scroll_offset as u16));
 
-        let inner_width = chunks[1].width.saturating_sub(2);
+        let inner_width = chunks[3].width.saturating_sub(2);
         let cursor_offset = input_buffer.width().min(inner_width.saturating_sub(1) as usize);
 
         // Set cursor just before the right border
-        let cursor_x = chunks[1].x + 1 + cursor_offset as u16;
-        let cursor_y = chunks[1].y + 1;
+        let cursor_x = chunks[3].x + 1 + cursor_offset as u16;
+        let cursor_y = chunks[3].y + 1;
         f.set_cursor(cursor_x, cursor_y);
 
-        f.render_widget(new_chat, chunks[1]);
+        f.render_widget(new_chat, chunks[3]);
 
         let combined_message = if app.message.is_empty() {
             "Press [Esc] to return to chat list".to_string()
@@ -77,7 +95,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         };
 
         let message = Paragraph::new(Text::from(combined_message)).style(Style::default());
-        f.render_widget(message, chunks[2]);
+        f.render_widget(message, chunks[4]);
     } else {
         let fallback = Paragraph::new("Invalid state or failed to load chat view")
             .block(Block::default().title("Error").borders(Borders::ALL))
@@ -87,6 +105,54 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
+    let (input_buffer, chat_id, page, page_count) = match &mut app.state {
+        FormState::Chat {
+            input_buffer,
+            chat_id,
+            page,
+            page_count,
+            ..
+        } => (input_buffer, chat_id, page, page_count),
+        _ => return,
+    };
+
+    match key.code {
+        KeyCode::Char(c) => handle_char(app, c).await,
+        KeyCode::Backspace => handle_backspace(app).await,
+        KeyCode::Enter => handle_enter(app).await,
+        KeyCode::Up => handle_up(app).await,
+        KeyCode::Down => handle_down(app).await,
+
+        KeyCode::Esc => {
+            app.state = FormState::Chats { selected_index: 0 };
+        }
+        _ => {}
+    }
+}
+
+pub async fn handle_char(app: &mut App, c: char) {
+    let input_buffer = match &mut app.state {
+        FormState::Chat {
+            input_buffer,
+            ..
+        } => input_buffer,
+        _ => return,
+    };
+    input_buffer.push(c);
+}
+
+pub async fn handle_backspace(app: &mut App) {
+    let input_buffer = match &mut app.state {
+        FormState::Chat {
+            input_buffer,
+            ..
+        } => input_buffer,
+        _ => return,
+    };
+    input_buffer.pop();
+}
+
+pub async fn handle_enter(app: &mut App) {
     let (input_buffer, chat_id) = match &mut app.state {
         FormState::Chat {
             input_buffer,
@@ -95,53 +161,125 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         } => (input_buffer, chat_id),
         _ => return,
     };
-
-    match key.code {
-        KeyCode::Char(c) => input_buffer.push(c),
-        KeyCode::Backspace => {
-            input_buffer.pop();
+    if input_buffer.trim().is_empty() {
+        return;
+    }
+    let request = ClientRequest {
+        jwt: Some(app.jwt.clone()),
+        command: SendMessage {
+            chat_id: *chat_id,
+            content: input_buffer.clone(),
+        },
+    };
+    let message_text = input_buffer.clone();
+    let user_id = app.user_id;
+    let response = match app.send_request(&request).await {
+        Ok(response) => response,
+        Err(err) => {
+            app.message = format!("Error: {}", err);
+            return;
         }
-        KeyCode::Enter => {
-            let request = ClientRequest {
-                jwt: Some(app.jwt.clone()),
-                command: SendMessage {
-                    chat_id: *chat_id,
-                    content: input_buffer.clone(),
-                },
-            };
-            let message_text = input_buffer.clone();
-            let user_id = app.user_id;
-            let response = match app.send_request(&request).await {
-                Ok(response) => response,
-                Err(err) => {
-                    app.message = format!("Error: {}", err);
-                    return;
+    };
+    if response.success {
+        let (input_buffer, messages) = match &mut app.state {
+            FormState::Chat {
+                input_buffer,
+                messages,
+                ..
+            } => (input_buffer, messages),
+            _ => return,
+        };
+        messages.insert(0, ChatMessage {
+            user_id,
+            username: app.username.clone(),
+            content: message_text,
+        });
+        input_buffer.clear();
+        app.message.clear();
+    } else {
+        app.message = response.message.unwrap_or("Failed to send message".into());
+    }
+}
+
+pub async fn handle_up(app: &mut App) {
+    let (page, page_count, chat_id) = match &mut app.state {
+        FormState::Chat {
+            page,
+            page_count,
+            chat_id,
+            ..
+        } => (page, page_count, chat_id),
+        _ => return,
+    };
+    if *page >= *page_count - 1 {
+        app.message = "No more messages in chat!".to_string();
+        return;
+    }
+    let chat_id = *chat_id;
+    let next_page = *page + 1;
+
+    get_messages(app, chat_id, next_page).await;
+}
+
+pub async fn handle_down(app: &mut App) {
+    let (page, page_count, chat_id) = match &mut app.state {
+        FormState::Chat {
+            page,
+            page_count,
+            chat_id,
+            ..
+        } => (page, page_count, chat_id),
+        _ => return,
+    };
+    if *page <= 0 {
+        app.message = "Already at most recent messages!".to_string();
+        return;
+    }
+    let chat_id = *chat_id;
+    let next_page = *page - 1;
+
+    get_messages(app, chat_id, next_page).await;
+}
+
+pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
+    let request = ClientRequest {
+        jwt: Some(app.jwt.clone()),
+        command: GetChatMessages {
+            chat_id,
+            page: new_page,
+            page_size: PAGE_SIZE,
+        },
+    };
+    let response = match app.send_request(&request).await {
+        Ok(response) => response,
+        Err(err) => {
+            app.message = format!("Error: {}", err);
+            return;
+        }
+    };
+    if response.success {
+        let (messages, page) = match &mut app.state {
+            FormState::Chat {
+                messages,
+                page,
+                ..
+            } => (messages, page),
+            _ => return,
+        };
+        if let Some(data) = response.data {
+            match serde_json::from_value::<ChatMessages>(data) {
+                Ok(new_messages) => {
+                    *messages = new_messages.messages;
+                    *page = new_page;
                 }
-            };
-            if response.success {
-                let (input_buffer, messages) = match &mut app.state {
-                    FormState::Chat {
-                        input_buffer,
-                        messages,
-                        ..
-                    } => (input_buffer, messages),
-                    _ => return,
-                };
-                messages.insert(0, ChatMessage {
-                    user_id,
-                    username: app.username.clone(),
-                    content: message_text,
-                });
-                input_buffer.clear();
-                app.message.clear();
-            } else {
-                app.message = response.message.unwrap_or("Failed to send message".into());
+                Err(e) => {
+                    app.message = format!("Parse error: {}", e);
+                }
             }
+        } else {
+            app.message = "No chat data returned".into();
         }
-
-        KeyCode::Esc => {
-            app.state = FormState::Chats { selected_index: 0 };
-        }
-        _ => {}
+    } else {
+        app.message = response.message.unwrap_or("Failed to send message".into());
     }
 }

@@ -6,3 +6,4 @@ pub mod add_friends;
 pub mod friends_menu;
 pub mod friend_requests;
 pub mod confirm_friend_request;
+pub mod friend_list;

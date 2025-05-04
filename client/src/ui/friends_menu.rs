@@ -81,7 +81,27 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         }
                         app.set_friend_requests();
                     }
-                    1 => { /* View Friends */ }
+                    1 => {
+                        let req = ClientRequest{
+                            jwt: Option::from(app.jwt.clone()),
+                            command: Command::GetFriends {}
+                        };
+                        match app.send_request(&req).await {
+                            Ok(resp) => {
+                                if resp.success {
+                                    if let Some(data) = resp.data.clone() {
+                                        app.friend_list = serde_json::from_value(resp.data.into())
+                                    }
+                                }else if let Some(message) = resp.message.clone() {
+                                    app.message = message;
+                                }
+                            },
+                            Err(e) => {
+                                app.message = e.to_string();
+                            }
+                        }
+                        app.set_friend_list();
+                    }
                     2 => { /* Remove Friends */ }
                     _ => {}
                 }

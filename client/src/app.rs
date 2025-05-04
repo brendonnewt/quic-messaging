@@ -3,7 +3,7 @@ use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
 use rustls::Error;
 use shared::client_response::{ClientRequest, Command};
-use shared::models::user_models::FriendRequestList;
+use shared::models::user_models::{FriendRequestList, UserList};
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -44,6 +44,9 @@ pub enum FormState {
         selected_index: usize,
         selected_option: usize, // Usize where 0 = accept and 1 = decline
     },
+    FriendList{
+        selected_index: usize,
+    },
     Exit,
 }
 
@@ -58,6 +61,8 @@ pub struct App {
     pub list_state: ListState,
     pub friend_requests: Result<FriendRequestList, serde_json::Error>,
     pub friend_request_num: usize,
+    pub friend_list: Result<UserList, serde_json::Error>,
+    pub friend_list_num: usize,
 }
 
 impl App {
@@ -73,6 +78,8 @@ impl App {
             list_state: ListState::default(),
             friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
             friend_request_num: 0,
+            friend_list: Ok(UserList { users: vec![] }),
+            friend_list_num: 0,
         }
     }
 
@@ -144,6 +151,11 @@ impl App {
         };
     }
 
+    pub fn set_friend_list(&mut self) {
+        self.state = FormState::FriendList {selected_index: 0}
+    }
+
+
     // Add the set_exit method
     pub fn set_exit(&mut self) {
         self.state = FormState::Exit;
@@ -196,6 +208,10 @@ impl App {
 
     pub fn set_friend_request_num(&mut self, friend_request_num: usize) {
         self.friend_request_num = friend_request_num;
+    }
+
+    pub fn set_friend_list_num(&mut self, friend_list_num: usize) {
+        self.friend_list_num = friend_list_num;
     }
 
     pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {

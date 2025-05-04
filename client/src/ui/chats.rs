@@ -8,6 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
+use crate::ui::create_chat::ChatCreationPhase;
 
 const PAGE_SIZE: u64 = 10;
 
@@ -61,7 +62,14 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             },
             KeyCode::Tab => {
-                // TODO: NEW CHAT LOGIC
+                let friends = Vec::new(); // however you store/load them
+                app.state = FormState::ChatCreation(
+                    ChatCreationPhase::FriendSelection {
+                        selected: 0,
+                        chosen: Vec::new(),
+                        friends,
+                    }
+                );
             }
             KeyCode::Up => {
                 if selected_index > 0 {

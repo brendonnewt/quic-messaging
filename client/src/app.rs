@@ -4,7 +4,9 @@ use ratatui::widgets::ListState;
 use shared::client_response::{ClientRequest, Command};
 use shared::client_response::Command::GetChatPages;
 use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, PageCount};
+use shared::models::user_models::User;
 use shared::server_response::ServerResponse;
+use crate::ui::create_chat::ChatCreationPhase;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
@@ -41,6 +43,7 @@ pub enum FormState {
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
+    ChatCreation(ChatCreationPhase),
     Exit,
 }
 

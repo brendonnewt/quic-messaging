@@ -15,8 +15,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     let area = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
-        .constraints([Constraint::Length(3), Constraint::Length(3)].as_ref())
-        .split(f.size());
+        .constraints([Constraint::Min(0)])
+        .split(f.size())[0];
 
     let (req_i, opt_i) = if let FormState::ConfirmFriendRequest { selected_index, selected_option } = app.state {
         (selected_index, selected_option)
@@ -24,7 +24,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         (0, 0)
     };
 
-    let title = "Accept or Decline friend request?".to_string();
+    let title = "Accept or Decline Friend Request?".to_string();
 
     let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &label)| {
         let style = if i == opt_i {
@@ -39,15 +39,13 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL).title(title))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
-    f.render_widget(list, area[0]);
+    f.render_widget(list, area);
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
         match key.code {
             Up | Down => {
-                // adjust selected_option under a &mut borrow of state
                 if let FormState::ConfirmFriendRequest { selected_option, .. } = &mut app.state {
-                    // two‐option toggle
                     *selected_option = (*selected_option + 1) % 2;
                 }
             }
@@ -87,6 +85,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         app.message = err.to_string();
                     }
                 }
+                app.set_friend_requests();
             }
             Esc => {
                 app.set_friend_requests();

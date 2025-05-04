@@ -8,7 +8,7 @@ use ratatui::{
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
+    let options = ["Chats", "Chatroom", "Add Friends", "Friends", "Settings", "Log Out"];
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
@@ -29,7 +29,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     }).collect();
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Your Menu"))
+        .block(Block::default().borders(Borders::ALL).title("Logged In"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()

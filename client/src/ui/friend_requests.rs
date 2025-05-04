@@ -60,7 +60,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     app.set_friend_request_num(items.len());
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Your Menu"))
+        .block(Block::default().borders(Borders::ALL).title("Friend Requests"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()

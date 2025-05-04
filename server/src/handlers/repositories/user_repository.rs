@@ -90,7 +90,7 @@ pub async fn update_friend_request_status(sender_id: i32, receiver_id: i32, stat
             .exec(&*db)
             .await?;
     }
-    
+
     Ok(())
 }
 

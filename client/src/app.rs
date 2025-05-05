@@ -38,6 +38,7 @@ pub enum FormState {
         date_joined: String,
     },
     Exit,
+    EditingField,
 }
 
 pub struct App {
@@ -50,7 +51,12 @@ pub struct App {
     pub jwt: String,
     pub list_state: ListState,
     pub profile: Option<Profile>,
+    pub is_editing: bool,
+    pub is_quitting: bool,
+    pub edit_field: Option<String>,  // <-- Missing
+    pub edit_value: String,          // <-- Missing
 }
+
 
 #[derive(Debug, Clone)]
 pub struct Profile {
@@ -78,6 +84,10 @@ impl App {
             jwt: "".to_string(),
             list_state: ListState::default(),
             profile: None, // Profile is initially None
+            is_editing: false,
+            is_quitting: false,
+            edit_field: None,
+            edit_value: "".to_string(),
         }
     }
 

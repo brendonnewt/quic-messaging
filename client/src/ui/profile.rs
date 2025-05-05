@@ -5,12 +5,16 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::App;
+use crate::app::{App, FormState};
 use ratatui::widgets::ListState;
 use crossterm::event::{self, KeyCode, KeyEvent};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let size = f.size(); // Get the area of the frame
+    if app.is_quitting {
+        return;  // Early return, effectively quitting the app
+    }
+
+    let size = f.area(); // Use .area() instead of .size()
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -80,7 +84,6 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 }
 
 pub fn handle_input(app: &mut App, key: KeyEvent) {
-    // Handle key events for navigation
     match key.code {
         KeyCode::Up => {
             if app.selected_index > 0 {
@@ -93,45 +96,27 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Enter => {
-            if let Some(profile) = &mut app.profile {
-                match app.selected_index {
-                    0 => {
-                        // Handle editing "Full Name"
-                        app.message = "Editing Full Name...".into();
-                        // Implement actual input handling here
-                    }
-                    1 => {
-                        // Handle editing "Username"
-                        app.message = "Editing Username...".into();
-                        // Implement actual input handling here
-                    }
-                    2 => {
-                        // Handle editing "Email"
-                        app.message = "Editing Email...".into();
-                        // Implement actual input handling here
-                    }
-                    3 => {
-                        // Handle editing "Password"
-                        app.message = "Editing Password...".into();
-                        // Implement actual input handling here
-                    }
-                    4 => {
-                        // Handle editing "Date of Birth"
-                        app.message = "Editing Date of Birth...".into();
-                        // Implement actual input handling here
-                    }
-                    5 => {
-                        // Date Added is non-editable, do nothing if selected
-                        app.message = "Date Added cannot be edited.".into();
-                    }
-                    _ => {}
+            match app.selected_index {
+                0..=4 => {
+                    app.state = FormState::EditingField { field_index: app.selected_index };
                 }
+                5 => {
+                    app.message = "Date Added cannot be edited.".into();
+                }
+                _ => {}
             }
         }
         KeyCode::Esc => {
             app.message = "Exiting profile settings...".into();
-            // Handle exit logic (e.g., go back to the previous menu)
-            // You may want to implement a specific action for Esc (e.g., navigating back).
+            app.state = FormState::UserMenu {
+                selected_index: 0, // Pass a value for selected_index
+            }; // Switch to the user menu instead of quitting
+        }
+        KeyCode::Char('q') => {
+            app.state = FormState::UserMenu {
+                selected_index: 0, // Pass a value for selected_index
+            };
+            app.message = "Returning to User Menu...".into();
         }
         _ => {}
     }

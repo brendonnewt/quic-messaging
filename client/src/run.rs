@@ -22,10 +22,12 @@ pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         // Draw UI
         terminal.draw(|f| {
             match &app.state {
-                FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::LoginForm { .. } => ui::login::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::RegisterForm { .. } => ui::registration::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::UserMenu { .. } => ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app),
+                FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<std::io::Stdout>>(f, app),
+                FormState::LoginForm { .. } => ui::login::render::<CrosstermBackend<std::io::Stdout>>(f, app),
+                FormState::RegisterForm { .. } => ui::registration::render::<CrosstermBackend<std::io::Stdout>>(f, app),
+                FormState::UserMenu { .. } => ui::user_menu::render::<CrosstermBackend<std::io::Stdout>>(f, app),
+                FormState::ProfileView { .. } => ui::profile::render::<CrosstermBackend<std::io::Stdout>>(f, app),
+                FormState::EditingField { .. } => ui::edit::render::<CrosstermBackend<std::io::Stdout>>(f, app),
                 FormState::Exit => return,
                 _ => {}
             }
@@ -67,6 +69,12 @@ pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                 FormState::UserMenu { .. } => {
                     ui::user_menu::handle_input(app, key);
                 }
+                FormState::ProfileView { .. } => {
+                    ui::profile::handle_input(app, key);
+                }
+                FormState::EditingField { .. } => {
+                    ui::edit::handle_input(app, key);
+                },
                 _ => {}
             }
         }

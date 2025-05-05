@@ -169,7 +169,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Esc => {
             app.set_main_menu(); // Navigate back to the main menu
-            app.message = "Returning to main menu...".to_string();
         }
         _ => {}
     }

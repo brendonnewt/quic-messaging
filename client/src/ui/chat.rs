@@ -1,5 +1,6 @@
 use crate::app::{App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::text::{Line, Span};
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -8,11 +9,10 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use ratatui::text::{Line, Span};
-use unicode_width::UnicodeWidthStr;
-use shared::client_response::{ClientRequest, Command};
 use shared::client_response::Command::{GetChatMessages, SendMessage};
+use shared::client_response::{ClientRequest, Command};
 use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, PageCount};
+use unicode_width::UnicodeWidthStr;
 
 const PAGE_SIZE: u64 = 10;
 
@@ -21,14 +21,13 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([
-            Constraint::Min(9),     // Messages list
-            Constraint::Length(1),  // Page info
-            Constraint::Length(1),  // Spacer
-            Constraint::Length(3),  // New message input
-            Constraint::Length(3),  // Message area
+            Constraint::Min(9),    // Messages list
+            Constraint::Length(1), // Page info
+            Constraint::Length(1), // Spacer
+            Constraint::Length(3), // New message input
+            Constraint::Length(3), // Message area
         ])
         .split(f.size());
-
 
     if let FormState::Chat {
         chat_name,
@@ -37,15 +36,17 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         page_count,
         messages,
         input_buffer,
-    } = &mut app.state {
-
+    } = &mut app.state
+    {
         let lines: Vec<Line> = messages
             .iter()
             .map(|msg| {
                 let name_span = if msg.username == app.username {
                     Span::styled(
                         format!("{}: ", msg.username),
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
                     )
                 } else {
                     Span::raw(format!("{}: ", msg.username))
@@ -56,11 +57,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             .collect();
 
         let chat_paragraph = Paragraph::new(lines)
-            .block(Block::default().title(chat_name.as_str()).borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .title(chat_name.as_str())
+                    .borders(Borders::ALL),
+            )
             .wrap(ratatui::widgets::Wrap { trim: true });
 
         f.render_widget(chat_paragraph, chunks[0]);
-        
+
         let page_number = {
             if *page_count == 0 {
                 0
@@ -69,8 +74,11 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             }
         };
 
-        let page_info = Paragraph::new(format!("Page {} of {}", page_number, *page_count))
-            .style(Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC));
+        let page_info = Paragraph::new(format!("Page {} of {}", page_number, *page_count)).style(
+            Style::default()
+                .fg(Color::Gray)
+                .add_modifier(Modifier::ITALIC),
+        );
         f.render_widget(page_info, chunks[1]);
 
         let visible_width = chunks[3].width.saturating_sub(4) as usize;
@@ -86,7 +94,9 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             .scroll((0, scroll_offset as u16));
 
         let inner_width = chunks[3].width.saturating_sub(2);
-        let cursor_offset = input_buffer.width().min(inner_width.saturating_sub(1) as usize);
+        let cursor_offset = input_buffer
+            .width()
+            .min(inner_width.saturating_sub(1) as usize);
 
         // Set cursor just before the right border
         let cursor_x = chunks[3].x + 1 + cursor_offset as u16;
@@ -112,27 +122,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    let (input_buffer, chat_id, page, page_count) = match &mut app.state {
-        FormState::Chat {
-            input_buffer,
-            chat_id,
-            page,
-            page_count,
-            ..
-        } => (input_buffer, chat_id, page, page_count),
-        _ => return,
-    };
-
     match key.code {
         KeyCode::Char(c) => handle_char(app, c).await,
         KeyCode::Backspace => handle_backspace(app).await,
         KeyCode::Enter => handle_enter(app).await,
         KeyCode::Up => handle_up(app).await,
         KeyCode::Down => handle_down(app).await,
-
         KeyCode::Esc => {
             app.message.clear();
-            app.state = FormState::Chats { selected_index: 0 };
+            app.enter_chats_view().await;
         }
         _ => {}
     }
@@ -140,10 +138,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
 pub async fn handle_char(app: &mut App, c: char) {
     let input_buffer = match &mut app.state {
-        FormState::Chat {
-            input_buffer,
-            ..
-        } => input_buffer,
+        FormState::Chat { input_buffer, .. } => input_buffer,
         _ => return,
     };
     input_buffer.push(c);
@@ -151,10 +146,7 @@ pub async fn handle_char(app: &mut App, c: char) {
 
 pub async fn handle_backspace(app: &mut App) {
     let input_buffer = match &mut app.state {
-        FormState::Chat {
-            input_buffer,
-            ..
-        } => input_buffer,
+        FormState::Chat { input_buffer, .. } => input_buffer,
         _ => return,
     };
     input_buffer.pop();
@@ -262,11 +254,7 @@ pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
     };
     if response.success {
         let (messages, page) = match &mut app.state {
-            FormState::Chat {
-                messages,
-                page,
-                ..
-            } => (messages, page),
+            FormState::Chat { messages, page, .. } => (messages, page),
             _ => return,
         };
         if let Some(data) = response.data {
@@ -288,9 +276,12 @@ pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
 
     let request = ClientRequest {
         jwt: Some(app.jwt.clone()),
-        command: Command::GetChatPages { chat_id, page_size: PAGE_SIZE },
+        command: Command::GetChatPages {
+            chat_id,
+            page_size: PAGE_SIZE,
+        },
     };
-    
+
     match app.send_request(&request).await {
         Ok(response) => {
             if response.success {
@@ -298,14 +289,11 @@ pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
                     match serde_json::from_value::<PageCount>(data) {
                         Ok(count) => {
                             let page_count = match &mut app.state {
-                                FormState::Chat {
-                                    page_count,
-                                    ..
-                                } => page_count,
+                                FormState::Chat { page_count, .. } => page_count,
                                 _ => return,
-                            }; 
+                            };
                             *page_count = count.page_count;
-                        },
+                        }
                         Err(e) => {
                             app.message = format!("Parse error: {}", e);
                         }

@@ -35,7 +35,6 @@ impl ServerCertVerifier for TestVerifier {
 #[tokio::main]
 async fn main()  -> Result<(), Box<dyn Error>>{
     let mut serv_addr = utils::constants::SERVER_ADDR.to_owned();
-    println!("{}", serv_addr);
     // QUIC Client
     let rustls_cfg = RustlsClientConfig::builder().with_safe_defaults().with_custom_certificate_verifier(Arc::new(TestVerifier)).with_no_client_auth();
     let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));

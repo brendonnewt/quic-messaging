@@ -60,8 +60,16 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             .wrap(ratatui::widgets::Wrap { trim: true });
 
         f.render_widget(chat_paragraph, chunks[0]);
+        
+        let page_number = {
+            if *page_count == 0 {
+                0
+            } else {
+                *page + 1
+            }
+        };
 
-        let page_info = Paragraph::new(format!("Page {} of {}", *page + 1, *page_count))
+        let page_info = Paragraph::new(format!("Page {} of {}", page_number, *page_count))
             .style(Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC));
         f.render_widget(page_info, chunks[1]);
 

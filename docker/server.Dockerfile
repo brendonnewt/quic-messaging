@@ -1,4 +1,4 @@
-# Use official Rust image as a build environment
+#Use official Rust image as a build environment
 FROM rust:latest AS builder
 
 # Set the working directory

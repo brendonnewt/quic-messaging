@@ -137,9 +137,10 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, req.jwt, "Logged out")
         }
 
-        Command::SendFriendRequest {receiver_id} => {
+        Command::SendFriendRequest {receiver_username} => {
+            let user = user_controller::get_user_by_username(receiver_username.clone(), db.clone()).await;
             let jwt = req.jwt;
-            let result = user_controller::add_friend(jwt.clone().unwrap(), receiver_id, db.clone()).await;
+            let result = user_controller::add_friend(jwt.clone().unwrap(), user.unwrap().id, db.clone()).await;
             build_response(result, jwt.clone(), "Friend Request Sent")
         }
 

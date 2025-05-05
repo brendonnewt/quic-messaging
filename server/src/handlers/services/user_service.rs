@@ -32,6 +32,20 @@ pub async fn get_info(
     }
 }
 
+pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<User, ServerError> {
+    let user = user_repository::get_user_by_username(username, db).await?;
+
+    match user {
+        Some(user) => {
+            Ok(User {
+                id: user.id,
+                username: user.username,
+            })
+        },
+        None => Err(ServerError::UserNotFound),
+    }
+}
+
 pub async fn send_friend_request(
     jwt: String,
     receiver_id: i32,

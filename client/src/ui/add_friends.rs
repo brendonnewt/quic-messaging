@@ -33,7 +33,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
         // Id box
         let id_para = Paragraph::new(Text::from(id.clone()))
-            .block(Block::default().borders(Borders::ALL).title("Friend ID"))
+            .block(Block::default().borders(Borders::ALL).title("Friend Username"))
             .style(id_style);
         f.render_widget(id_para, chunks[0]);
 
@@ -61,15 +61,13 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             id.pop();
         }
         Char(c) => {
-            if c.is_ascii_digit() {
-                id.push(c);
-            }
+            id.push(c)
         }
         Enter => {
             let req = ClientRequest {
                 jwt: Option::from(app_jwt),
                 command: Command::SendFriendRequest {
-                    receiver_id: id.clone().parse().unwrap(),
+                    receiver_username: id.clone(),
                 },
             };
             match app.send_request(&req).await {

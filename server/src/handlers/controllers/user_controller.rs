@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;
+use sea_orm::prelude::Uuid;
 use crate::handlers::services::{user_service};
 use crate::utils::errors::server_error::ServerError;
 use shared::models::server_models::ServerResponseModel;
@@ -11,6 +12,10 @@ pub async fn get_user_info(
 ) -> Result<User, ServerError> {
     // Use user service to get users basic info
     user_service::get_info(jwt, db).await
+}
+
+pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<User, ServerError> {
+    user_service::get_user_by_username(username, db).await
 }
 
 /// Send a friend request

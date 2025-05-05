@@ -38,7 +38,7 @@ pub enum FormState {
         date_joined: String,
     },
     Exit,
-    EditingField,
+    EditingField {field_index: usize,}
 }
 
 pub struct App {
@@ -53,8 +53,8 @@ pub struct App {
     pub profile: Option<Profile>,
     pub is_editing: bool,
     pub is_quitting: bool,
-    pub edit_field: Option<String>,  // <-- Missing
-    pub edit_value: String,          // <-- Missing
+    pub edit_field: Option<String>,
+    pub edit_value: String,
 }
 
 
@@ -193,18 +193,18 @@ impl App {
         self.list_state.select(Some(0));
     }
 
-    pub fn set_profile_view(&mut self, profile: Profile) {
+    pub fn set_profile_view(&mut self) {
         self.state = FormState::ProfileView {
-            username: profile.username.clone(),
-            full_name: profile.full_name.clone(),
-            email: profile.email.clone(),
-            phone: profile.phone.clone(),
-            bio: profile.bio.clone(),
-            location: profile.location.clone(),
-            date_joined: profile.date_joined.clone(),
+            username: "user123".to_string(),
+            full_name: "John Doe".to_string(),
+            email: "john.doe@example.com".to_string(),
+            phone: Some("123-456-7890".to_string()),
+            bio: Some("A passionate developer.".to_string()),
+            location: Some("Earth".to_string()),
+            date_joined: "2021-01-01".to_string(),
         };
-        self.profile = Some(profile); // Store profile information
     }
+
 
     // Setters for LoginForm and RegisterForm fields
     pub fn set_username(&mut self, username: String) {

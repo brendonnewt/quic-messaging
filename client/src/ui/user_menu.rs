@@ -68,13 +68,7 @@ pub fn handle_input(app: &mut App, input: KeyEvent) {
                     1 => println!("Navigating to Chatroom..."),
                     2 => println!("Navigating to Add Friends..."),
                     3 => println!("Navigating to Friend List..."),
-                    4 => {
-                        if let Some(profile) = &app.profile {
-                            app.set_profile_view(profile.clone());
-                        } else {
-                            println!("No profile loaded.");
-                        }
-                    }
+                    4 => {app.set_profile_view(); }
                     5 => {
                         app.state = FormState::MainMenu;
                     }

@@ -91,14 +91,37 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Down => {
-            if app.selected_index < 5 { // 6 fields (0-5)
+            if app.selected_index < 5 {
                 app.selected_index += 1;
             }
         }
         KeyCode::Enter => {
             match app.selected_index {
                 0..=4 => {
-                    app.state = FormState::EditingField { field_index: app.selected_index };
+                    // You'll want to set the buffer and editing field
+                    let field_name = match app.selected_index {
+                        0 => "Full Name",
+                        1 => "Username",
+                        2 => "Email",
+                        3 => "Password",
+                        4 => "Date of Birth",
+                        _ => "",
+                    };
+
+                    let current_value = match app.selected_index {
+                        0 => app.profile.as_ref().map(|p| p.full_name.clone()),
+                        1 => app.profile.as_ref().map(|p| p.username.clone()),
+                        2 => app.profile.as_ref().map(|p| p.email.clone()),
+                        3 => app.profile.as_ref().map(|p| p.password.clone()),
+                        4 => app.profile.as_ref().map(|p| p.dob.clone()),
+                        _ => None,
+                    }.unwrap_or_else(|| "".to_string());
+
+                    app.edit_field = Some(field_name.to_string());
+                    app.edit_value = current_value;
+                    app.state = FormState::EditingField {
+                        field_index: app.selected_index,
+                    };
                 }
                 5 => {
                     app.message = "Date Added cannot be edited.".into();
@@ -106,15 +129,9 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
                 _ => {}
             }
         }
-        KeyCode::Esc => {
-            app.message = "Exiting profile settings...".into();
+        KeyCode::Esc | KeyCode::Char('q') => {
             app.state = FormState::UserMenu {
-                selected_index: 0, // Pass a value for selected_index
-            }; // Switch to the user menu instead of quitting
-        }
-        KeyCode::Char('q') => {
-            app.state = FormState::UserMenu {
-                selected_index: 0, // Pass a value for selected_index
+                selected_index: 0,
             };
             app.message = "Returning to User Menu...".into();
         }

@@ -24,8 +24,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .split(size);
 
     // Ensure edit_field and edit_value are initialized properly
-    let field = app.edit_field.as_ref().unwrap_or(&String::from("(No field selected)"));
-    let value = app.edit_value.as_ref().unwrap_or(&String::from("(No value set)"));
+    let fallback_field = String::from("(No field selected)");
+    let field = app.edit_field.as_ref().unwrap_or(&fallback_field);
+    let value: &str = if app.edit_value.is_empty() {
+        "(No value set)"
+    } else {
+        &app.edit_value
+    };
+
+
 
 
     let edit_prompt = format!("Editing: {} - Current Value: {}", field, value);
@@ -47,7 +54,7 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Enter => {
             // Save the new value if it exists
-            if let Some(new_value) = app.edit_value.clone() {
+            if let new_value = app.edit_value.clone() {
                 if let Some(field) = &app.edit_field {
                     match field.as_str() {
                         "Full Name" => {
@@ -78,12 +85,13 @@ pub fn handle_input(app: &mut App, key: KeyEvent) {
                         _ => {}
                     }
                 }
-                app.state = FormState::ProfileView; // Go back to profile view
+                app.set_profile_view();
             }
         }
         KeyCode::Esc => {
             // Cancel editing and return to profile view
-            app.state = FormState::ProfileView;
+           app.set_profile_view();
+
         }
         _ => {}
     }

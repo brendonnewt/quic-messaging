@@ -173,6 +173,9 @@ pub async fn remove_friend(
     // Delete the friendship from the database
     user_repository::delete_friendship(user_id, friend_id, db.clone()).await?;
 
+    // Delete all friend requests
+    user_repository::delete_friend_requests(user_id, friend_id, db.clone()).await?;
+
     Ok(ServerResponseModel { success: true })
 }
 

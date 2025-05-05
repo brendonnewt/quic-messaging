@@ -8,12 +8,12 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use shared::client_response::{ClientRequest, Command};
 use std::io::{self, Stdout};
 use std::sync::Arc;
+use tracing::{error, info};
 
-pub async fn run_app(
-    app: &mut App,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -22,38 +22,32 @@ pub async fn run_app(
 
     loop {
         // 1) Draw the appropriate UI for the current state
-        terminal.draw(|f| {
-            match &app.state {
-                FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::LoginForm { .. } => {
-                    ui::login::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::RegisterForm { .. } => {
-                    ui::registration::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::UserMenu { .. } => {
-                    ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::AddFriend { .. } => {
-                    ui::add_friends::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::FriendMenu { .. } => {
-                    ui::friends_menu::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::FriendRequests { .. } => {
-                    ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::ConfirmFriendRequest { .. } => {
-                    ui::confirm_friend_request::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::FriendList { .. } => {
-                    ui::friend_list::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::ConfirmUnfriend { .. } => {
-                    ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::Exit => return,
+        terminal.draw(|f| match &app.state {
+            FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::LoginForm { .. } => ui::login::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::RegisterForm { .. } => {
+                ui::registration::render::<CrosstermBackend<Stdout>>(f, app)
             }
+            FormState::UserMenu { .. } => ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::AddFriend { .. } => {
+                ui::add_friends::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendMenu { .. } => {
+                ui::friends_menu::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendRequests { .. } => {
+                ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ConfirmFriendRequest { .. } => {
+                ui::confirm_friend_request::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendList { .. } => {
+                ui::friend_list::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ConfirmUnfriend { .. } => {
+                ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Exit => return,
         })?;
 
         if matches!(app.state, FormState::Exit) {
@@ -133,16 +127,14 @@ pub async fn run_app(
                         match *selected_index {
                             0 => { /* Chats */ }
                             1 => { /* Chatroom */ }
-                            2 => { app.set_add_friend() }
-                            3 => { app.set_friend_menu() }
+                            2 => app.set_add_friend(),
+                            3 => app.set_friend_menu(),
                             4 => { /* Settings */ }
-                            5 => app.set_main_menu(), // Log Out -> back to main menu
+                            5 => { app.logout().await } // Log Out -> back to main menu
                             _ => {}
                         }
                     }
-                    KeyCode::Esc => {
-                        app.set_main_menu();
-                    }
+                    KeyCode::Esc => { app.logout().await }
                     _ => {}
                 },
 

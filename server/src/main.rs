@@ -16,9 +16,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber;
 use dashmap::DashMap;
+use shared::models::server_models::ServerResponseModel;
 
 const MAX_MESSAGE_SIZE: usize = 65536; // 64 KB
 
@@ -124,6 +125,16 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
+        }
+
+        Command::Logout {username} => {
+            let result: Result<_, ServerError> = Ok(ServerResponseModel{success: true});
+            if logged_in.remove(&username).is_some() {
+                info!("User {} logged out", username);
+            } else {
+                warn!("Logout: user {} was not marked as logged in", username);
+            }
+            build_response(result, req.jwt, "Logged out")
         }
 
         Command::SendFriendRequest {receiver_id} => {

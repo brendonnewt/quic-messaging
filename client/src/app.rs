@@ -2,6 +2,7 @@ use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
 use rustls::Error;
+use tracing::error;
 use shared::client_response::{ClientRequest, Command};
 use shared::models::user_models::{FriendRequestList, UserList};
 use shared::server_response::ServerResponse;
@@ -228,6 +229,25 @@ impl App {
     pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {
         if let FormState::UserMenu { selected_index: s } = &mut self.state {
             *s = selected_index;
+        }
+    }
+
+    pub async fn logout(&mut self) -> (){
+        let req = ClientRequest {
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::Logout {
+                username: self.username.clone(),
+            },
+        };
+        match self.send_request(&req).await {
+            Ok(response) => {
+                if response.success {
+                    self.set_main_menu();
+                }
+            }
+            Err(e) => {
+                error!("Error sending logout request: {:?}", e);
+            }
         }
     }
 }

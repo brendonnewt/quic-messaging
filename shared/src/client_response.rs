@@ -58,4 +58,7 @@ pub enum Command {
     GetUnreadMessageCount {
         chat_id: i32,
     },
+    Logout {
+        username: String,
+    }
 }

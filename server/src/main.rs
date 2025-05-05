@@ -155,6 +155,22 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
+        
+        Command::GetUnreadMessageCount => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_unread_message_count(jwt, db.clone()).await, None, "Unread Message Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+        
+        Command::MarkMessagesRead { chat_id } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await, None, "Unread Message Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
 
         other => {
             // Shouldn't be possible, but covering the case.

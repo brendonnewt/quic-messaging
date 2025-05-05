@@ -1,9 +1,9 @@
 use crate::ui::create_chat::ChatCreationPhase;
-use quinn::{Connection, RecvStream, SendStream};
+use quinn::{Connection};
 use ratatui::widgets::ListState;
-use shared::client_response::Command::{CreateChat, GetChatPages, GetFriends};
+use shared::client_response::Command::{CreateChat, GetFriends};
 use shared::client_response::{ClientRequest, Command};
-use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, PageCount};
+use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, Count};
 use shared::models::user_models::{User, UserList};
 use shared::server_response::ServerResponse;
 use std::sync::Arc;
@@ -56,6 +56,7 @@ pub struct App {
     pub username: String,
     pub jwt: String,
     pub user_id: i32,
+    pub unread_count: u64,
     pub list_state: ListState,
     pub chats: Vec<Chat>,
 }
@@ -71,6 +72,7 @@ impl App {
             username: "".to_string(),
             jwt: "".to_string(),
             user_id: -1,
+            unread_count: 0,
             list_state: ListState::default(),
             chats: Vec::new(),
         }
@@ -187,7 +189,7 @@ impl App {
         self.state = FormState::Exit;
     }
 
-    // Access current active field (if applicable)
+    // Access the current active field (if applicable)
     pub fn get_active_field(&self) -> Option<ActiveField> {
         match &self.state {
             FormState::LoginForm { active_field, .. } => Some(*active_field),
@@ -205,7 +207,36 @@ impl App {
         }
     }
 
-    pub fn set_user_menu(&mut self) {
+    pub async fn set_user_menu(&mut self) {
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::GetUnreadMessageCount,
+        };
+
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<Count>(data) {
+                            Ok(count) => {
+                                self.unread_count = count.count;
+                                self.state = FormState::UserMenu { selected_index: 0 };
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No unread message count returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get unread count".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
         self.state = FormState::UserMenu { selected_index: 0 };
     }
 
@@ -281,19 +312,92 @@ impl App {
         page: u64,
         page_size: u64,
     ) {
-        self.message = "Loading chat...".to_string();
+        // Get the number of pages in the chat
+        let page_count = self.get_page_count(chat_id, page_size).await;
+
+        if let Some(page_count) = page_count {
+            self.get_chat_messages(chat_id, chat_name, page_count, page, page_size).await;
+        }
+    }
+    
+    pub async fn get_chat_messages(&mut self, chat_id: i32, chat_name: String, page_count: u64, page: u64, page_size: u64) {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
-            command: Command::GetChatPages { chat_id, page_size },
+            command: Command::GetChatMessages {
+                chat_id,
+                page,
+                page_size,
+            },
         };
 
-        let mut page_count = None;
         match self.send_request(&request).await {
             Ok(response) => {
                 if response.success {
                     if let Some(data) = response.data {
-                        match serde_json::from_value::<PageCount>(data) {
-                            Ok(count) => page_count = Some(count.page_count),
+                        match serde_json::from_value::<ChatMessages>(data) {
+                            Ok(messages) => {
+                                self.state = FormState::Chat {
+                                    chat_name,
+                                    chat_id,
+                                    page_count,
+                                    messages: messages.messages,
+                                    page: 0,
+                                    input_buffer: "".to_string(),
+                                };
+                                self.message = "".into();
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No chat data returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get chats".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+
+        // Mark the messages in the chat as read if they were retrieved
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::MarkMessagesRead {
+                chat_id
+            },
+        };
+
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if !response.success {
+                    if let Some(message) = response.message {
+                        self.message = message;
+                    } else {
+                        self.message = "Couldn't mark messages as read!".into();
+                    }
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+
+    }
+
+    pub async fn get_page_count(&mut self, chat_id: i32, page_size: u64) -> Option<u64> {
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::GetChatPages { chat_id, page_size },
+        };
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<Count>(data) {
+                            Ok(count) => return Some(count.count),
                             Err(e) => {
                                 self.message = format!("Parse error: {}", e);
                             }
@@ -309,49 +413,7 @@ impl App {
                 self.message = format!("Error: {}", err);
             }
         }
-
-        if let Some(page_count) = page_count {
-            let request = ClientRequest {
-                jwt: Some(self.jwt.clone()),
-                command: Command::GetChatMessages {
-                    chat_id,
-                    page,
-                    page_size,
-                },
-            };
-
-            match self.send_request(&request).await {
-                Ok(response) => {
-                    if response.success {
-                        if let Some(data) = response.data {
-                            match serde_json::from_value::<ChatMessages>(data) {
-                                Ok(messages) => {
-                                    self.state = FormState::Chat {
-                                        chat_name,
-                                        chat_id,
-                                        page_count,
-                                        messages: messages.messages,
-                                        page: 0,
-                                        input_buffer: "".to_string(),
-                                    };
-                                    self.message = "".into();
-                                }
-                                Err(e) => {
-                                    self.message = format!("Parse error: {}", e);
-                                }
-                            }
-                        } else {
-                            self.message = "No chat data returned".into();
-                        }
-                    } else {
-                        self.message = response.message.unwrap_or("Failed to get chats".into());
-                    }
-                }
-                Err(err) => {
-                    self.message = format!("Error: {}", err);
-                }
-            }
-        }
+        None
     }
 }
 

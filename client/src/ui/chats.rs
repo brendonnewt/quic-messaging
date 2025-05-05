@@ -83,7 +83,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Esc => {
                 app.message.clear();
-                app.state = FormState::UserMenu { selected_index: 0 };
+                app.set_user_menu().await;
             }
             _ => {}
         }

@@ -11,7 +11,7 @@ use ratatui::{
 };
 use shared::client_response::Command::{GetChatMessages, SendMessage};
 use shared::client_response::{ClientRequest, Command};
-use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, PageCount};
+use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, Count};
 use unicode_width::UnicodeWidthStr;
 
 const PAGE_SIZE: u64 = 10;
@@ -286,13 +286,13 @@ pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
         Ok(response) => {
             if response.success {
                 if let Some(data) = response.data {
-                    match serde_json::from_value::<PageCount>(data) {
+                    match serde_json::from_value::<Count>(data) {
                         Ok(count) => {
                             let page_count = match &mut app.state {
                                 FormState::Chat { page_count, .. } => page_count,
                                 _ => return,
                             };
-                            *page_count = count.page_count;
+                            *page_count = count.count;
                         }
                         Err(e) => {
                             app.message = format!("Parse error: {}", e);

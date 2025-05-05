@@ -60,7 +60,8 @@ pub enum Command {
     MarkMessagesRead {
         chat_id: i32,
     },
-    GetUnreadMessageCount {
+    GetUnreadChatMessageCount {
         chat_id: i32,
     },
+    GetUnreadMessageCount,
 }

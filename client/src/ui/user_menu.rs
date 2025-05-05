@@ -46,8 +46,14 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
     f.render_widget(list, main_chunks[0]);
 
+    let combined_message = if app.message.is_empty() {
+        format!("You have {} unread messages", app.unread_count)
+    } else {
+        format!("{} | You have {} unread messages", app.message, app.unread_count)
+    };
+
     // Render app message
-    let message = Paragraph::new(app.message.clone())
+    let message = Paragraph::new(combined_message)
         .block(Block::default().borders(Borders::ALL).title("Status"));
 
     f.render_widget(message, main_chunks[1]);

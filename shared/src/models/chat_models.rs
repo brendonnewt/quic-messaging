@@ -25,6 +25,6 @@ pub struct ChatMessage {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PageCount {
-    pub page_count: u64,
+pub struct Count {
+    pub count: u64,
 }

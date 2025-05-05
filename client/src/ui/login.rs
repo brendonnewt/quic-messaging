@@ -116,8 +116,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                                         app.jwt = jwt;
                                         app.user_id = auth_response.user_id;
                                         app.username = username.clone();
-                                        app.state = FormState::UserMenu { selected_index: 0 };
                                         app.message = format!("Welcome {}!", username);
+                                        app.set_user_menu().await;
                                     }
                                 }
                                 Err(e) => {

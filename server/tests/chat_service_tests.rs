@@ -65,13 +65,13 @@ mod tests {
             let _ = chat_service::send_message(jwt.clone(), chat.id, "msg".to_string(), db.clone()).await;
         }
 
-        let unread_before = chat_service::get_unread_message_count(jwt.clone(), chat.id, db.clone()).await.unwrap();
-        assert_eq!(unread_before, 3);
+        let unread_before = chat_service::get_unread_chat_message_count(jwt.clone(), chat.id, db.clone()).await.unwrap();
+        assert_eq!(unread_before.count, 3);
 
         let _ = chat_service::mark_messages_read(jwt.clone(), chat.id, db.clone()).await.unwrap();
 
-        let unread_after = chat_service::get_unread_message_count(jwt.clone(), chat.id, db.clone()).await.unwrap();
-        assert_eq!(unread_after, 0);
+        let unread_after = chat_service::get_unread_chat_message_count(jwt.clone(), chat.id, db.clone()).await.unwrap();
+        assert_eq!(unread_after.count, 0);
     }
 
     #[tokio::test]
@@ -91,19 +91,19 @@ mod tests {
         let message = messages::Entity::find().one(&*db).await.unwrap().unwrap();
 
         // Check unread count for all members
-        let unread_bob = chat_service::get_unread_message_count(jwt_bob.clone(), chat.id, db.clone()).await.unwrap();
-        let unread_dylan = chat_service::get_unread_message_count(jwt_dylan.clone(), chat.id, db.clone()).await.unwrap();
-        assert_eq!(unread_bob, 1);
-        assert_eq!(unread_dylan, 1);
+        let unread_bob = chat_service::get_unread_chat_message_count(jwt_bob.clone(), chat.id, db.clone()).await.unwrap();
+        let unread_dylan = chat_service::get_unread_chat_message_count(jwt_dylan.clone(), chat.id, db.clone()).await.unwrap();
+        assert_eq!(unread_bob.count, 1);
+        assert_eq!(unread_dylan.count, 1);
 
         // Bob reads the message
         chat_service::mark_messages_read(jwt_bob.clone(), chat.id, db.clone()).await.unwrap();
 
-        let unread_bob_after = chat_service::get_unread_message_count(jwt_bob.clone(), chat.id, db.clone()).await.unwrap();
-        let unread_dylan_after = chat_service::get_unread_message_count(jwt_dylan.clone(), chat.id, db.clone()).await.unwrap();
+        let unread_bob_after = chat_service::get_unread_chat_message_count(jwt_bob.clone(), chat.id, db.clone()).await.unwrap();
+        let unread_dylan_after = chat_service::get_unread_chat_message_count(jwt_dylan.clone(), chat.id, db.clone()).await.unwrap();
 
-        assert_eq!(unread_bob_after, 0);
-        assert_eq!(unread_dylan_after, 1);
+        assert_eq!(unread_bob_after.count, 0);
+        assert_eq!(unread_dylan_after.count, 1);
     }
 }
 

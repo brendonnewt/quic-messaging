@@ -1,12 +1,12 @@
-use std::sync::Arc;
+use crate::ui::create_chat::ChatCreationPhase;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
+use shared::client_response::Command::{CreateChat, GetChatPages, GetFriends};
 use shared::client_response::{ClientRequest, Command};
-use shared::client_response::Command::GetChatPages;
 use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, PageCount};
-use shared::models::user_models::User;
+use shared::models::user_models::{User, UserList};
 use shared::server_response::ServerResponse;
-use crate::ui::create_chat::ChatCreationPhase;
+use std::sync::Arc;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
@@ -84,7 +84,7 @@ impl App {
         let len = (bytes.len() as u32).to_be_bytes();
 
         let (mut send, mut recv) = self.conn.open_bi().await?;
-        
+
         send.write_all(&len).await?;
         send.write_all(&bytes).await?;
         send.finish().await?;
@@ -98,6 +98,66 @@ impl App {
         let response = serde_json::from_slice(&resp_buf)?;
 
         Ok(response)
+    }
+
+    pub async fn create_chat(&mut self, users: Vec<User>, name: Option<String>) {
+        let member_ids: Vec<i32> = users.iter().map(|u| u.id).collect();
+        let is_group = member_ids.len() > 2;
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: CreateChat {
+                name,
+                is_group,
+                member_ids,
+            },
+        };
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if !response.success {
+                    if let Some(message) = response.message {
+                        self.message = message;
+                    } else {
+                        self.message = "Chat couldn't be created!".to_string();
+                    }
+                } else {
+                    self.message = "Chat created successfully!".to_string();
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+    }
+    
+    pub async fn get_friends(&mut self) -> Vec<User> {
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: GetFriends,
+        };
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<UserList>(data) {
+                            Ok(friends) => {
+                                return friends.users;
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No friends data returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get friends".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+        Vec::new()
     }
 
     // Switch states
@@ -167,7 +227,11 @@ impl App {
     }
 
     pub fn set_confirm_password(&mut self, confirm_password: String) {
-        if let FormState::RegisterForm { confirm_password: c, .. } = &mut self.state {
+        if let FormState::RegisterForm {
+            confirm_password: c,
+            ..
+        } = &mut self.state
+        {
             *c = confirm_password;
         }
     }
@@ -179,7 +243,6 @@ impl App {
     }
 
     pub async fn enter_chats_view(&mut self) {
-        self.message = "Loading chats...".to_string();
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
             command: Command::GetChats,
@@ -193,7 +256,6 @@ impl App {
                             Ok(chats) => {
                                 self.chats = chats.chats;
                                 self.state = FormState::Chats { selected_index: 0 };
-                                self.message = "".into();
                             }
                             Err(e) => {
                                 self.message = format!("Parse error: {}", e);
@@ -212,14 +274,17 @@ impl App {
         }
     }
 
-    pub async fn enter_chat_view(&mut self, chat_id: i32, chat_name: String, page: u64, page_size: u64) {
+    pub async fn enter_chat_view(
+        &mut self,
+        chat_id: i32,
+        chat_name: String,
+        page: u64,
+        page_size: u64,
+    ) {
         self.message = "Loading chat...".to_string();
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
-            command: Command::GetChatPages {
-                chat_id,
-                page_size,
-            }
+            command: Command::GetChatPages { chat_id, page_size },
         };
 
         let mut page_count = None;
@@ -228,9 +293,7 @@ impl App {
                 if response.success {
                     if let Some(data) = response.data {
                         match serde_json::from_value::<PageCount>(data) {
-                            Ok(count) => {
-                                page_count = Some(count.page_count)
-                            }
+                            Ok(count) => page_count = Some(count.page_count),
                             Err(e) => {
                                 self.message = format!("Parse error: {}", e);
                             }
@@ -246,7 +309,7 @@ impl App {
                 self.message = format!("Error: {}", err);
             }
         }
-        
+
         if let Some(page_count) = page_count {
             let request = ClientRequest {
                 jwt: Some(self.jwt.clone()),
@@ -289,9 +352,7 @@ impl App {
                 }
             }
         }
-        
     }
-
 }
 
 impl FormState {
@@ -316,7 +377,9 @@ impl FormState {
     // Getter for confirm_password (for RegisterForm)
     pub fn get_confirm_password(&self) -> Option<String> {
         match self {
-            FormState::RegisterForm { confirm_password, .. } => Some(confirm_password.clone()),
+            FormState::RegisterForm {
+                confirm_password, ..
+            } => Some(confirm_password.clone()),
             _ => None,
         }
     }

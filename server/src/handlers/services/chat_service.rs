@@ -23,7 +23,7 @@ pub async fn create_chat(
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let creator_id = claim.claims.user_id;
 
-    let chat = chat_repository::create_new_chat(name, is_group, db.clone()).await?;
+    let chat = chat_repository::create_new_chat(name, is_group, member_ids.clone(), db.clone()).await?;
 
     let mut members = member_ids;
     if !members.contains(&creator_id) {

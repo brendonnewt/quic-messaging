@@ -54,15 +54,15 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    if let FormState::Chats { selected_index } = app.state {
+    if let FormState::Chats { selected_index } = &mut app.state {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') =>  {
-                if let Some(chat) = app.chats.get(selected_index) {
+                if let Some(chat) = app.chats.get(*selected_index) {
                     app.enter_chat_view(chat.id, chat.chat_name.clone(), 0, PAGE_SIZE).await;
                 }
             },
             KeyCode::Tab => {
-                let friends = Vec::new(); // however you store/load them
+                let friends = app.get_friends().await;
                 app.state = FormState::ChatCreation(
                     ChatCreationPhase::FriendSelection {
                         selected: 0,
@@ -72,16 +72,17 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 );
             }
             KeyCode::Up => {
-                if selected_index > 0 {
-                    app.set_user_menu_selected_index(selected_index - 1);
+                if *selected_index > 0 {
+                    *selected_index -= 1;
                 }
             }
             KeyCode::Down => {
-                if selected_index < 5 {
-                    app.set_user_menu_selected_index(selected_index + 1);
+                if *selected_index < app.chats.len() - 1 {
+                    *selected_index += 1;
                 }
             }
             KeyCode::Esc => {
+                app.message.clear();
                 app.state = FormState::UserMenu { selected_index: 0 };
             }
             _ => {}

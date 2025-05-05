@@ -10,9 +10,9 @@ use ratatui::{
 };
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
-use shared::client_response::ClientRequest;
+use shared::client_response::{ClientRequest, Command};
 use shared::client_response::Command::{GetChatMessages, SendMessage};
-use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages};
+use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, PageCount};
 
 const PAGE_SIZE: u64 = 10;
 
@@ -123,6 +123,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         KeyCode::Down => handle_down(app).await,
 
         KeyCode::Esc => {
+            app.message.clear();
             app.state = FormState::Chats { selected_index: 0 };
         }
         _ => {}
@@ -170,8 +171,6 @@ pub async fn handle_enter(app: &mut App) {
             content: input_buffer.clone(),
         },
     };
-    let message_text = input_buffer.clone();
-    let user_id = app.user_id;
     let response = match app.send_request(&request).await {
         Ok(response) => response,
         Err(err) => {
@@ -207,7 +206,7 @@ pub async fn handle_up(app: &mut App) {
         } => (page, page_count, chat_id),
         _ => return,
     };
-    if *page >= *page_count - 1 {
+    if *page_count == 0 || *page >= *page_count - 1 {
         app.message = "No more messages in chat!".to_string();
         return;
     }
@@ -277,5 +276,41 @@ pub async fn get_messages(app: &mut App, chat_id: i32, new_page: u64) {
         }
     } else {
         app.message = response.message.unwrap_or("Failed to send message".into());
+    }
+
+    let request = ClientRequest {
+        jwt: Some(app.jwt.clone()),
+        command: Command::GetChatPages { chat_id, page_size: PAGE_SIZE },
+    };
+    
+    match app.send_request(&request).await {
+        Ok(response) => {
+            if response.success {
+                if let Some(data) = response.data {
+                    match serde_json::from_value::<PageCount>(data) {
+                        Ok(count) => {
+                            let page_count = match &mut app.state {
+                                FormState::Chat {
+                                    page_count,
+                                    ..
+                                } => page_count,
+                                _ => return,
+                            }; 
+                            *page_count = count.page_count;
+                        },
+                        Err(e) => {
+                            app.message = format!("Parse error: {}", e);
+                        }
+                    }
+                } else {
+                    app.message = "No page count returned".into();
+                }
+            } else {
+                app.message = response.message.unwrap_or("Failed to get chat".into());
+            }
+        }
+        Err(err) => {
+            app.message = format!("Error: {}", err);
+        }
     }
 }

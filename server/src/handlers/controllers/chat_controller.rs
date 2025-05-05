@@ -32,3 +32,11 @@ pub async fn send_message(jwt: String, chat_id: i32, content: String, db: Arc<Da
 pub async fn get_chat_page_count(jwt: String, chat_id: i32, page_size: u64, db: Arc<DatabaseConnection>) -> Result<PageCount, ServerError> {
     chat_service::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await
 }
+
+pub async fn create_chat(jwt: String,
+                         name: Option<String>,
+                         is_group: bool,
+                         member_ids: Vec<i32>,
+                         db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    chat_service::create_chat(jwt, name, is_group, member_ids, db.clone()).await
+}

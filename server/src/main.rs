@@ -2,7 +2,7 @@ pub mod entity;
 pub mod handlers;
 pub mod utils;
 
-use crate::handlers::controllers::{auth_controller, chat_controller};
+use crate::handlers::controllers::{auth_controller, chat_controller, user_controller};
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
@@ -131,7 +131,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
-        
+
         Command::GetChatPages { chat_id, page_size } => {
             if let Some(jwt) = req.jwt {
                 build_response(chat_controller::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await, None, "Chat Page Count")
@@ -139,6 +139,23 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>) -> Serv
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
+
+        Command::GetFriends => {
+            if let Some(jwt) = req.jwt {
+                build_response(user_controller::get_friends(jwt, db.clone()).await, None, "Friends")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
+        Command::CreateChat { member_ids, name, is_group } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::create_chat(jwt, name, is_group, member_ids, db.clone()).await, None, "Chat Page Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(

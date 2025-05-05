@@ -1,15 +1,76 @@
+use std::collections::{HashMap, HashSet};
 use crate::{entity, utils};
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectModel, Set};
 use std::sync::Arc;
+use entity::{chat_members, chats};
 use shared::models::user_models::User;
 use utils::errors::server_error::ServerError;
+use crate::entity::chats::Column;
 
 pub async fn create_new_chat(
     name: Option<String>,
     is_group: bool,
+    member_ids: Vec<i32>,
     db: Arc<DatabaseConnection>,
 ) -> Result<entity::chats::Model, ServerError> {
+    if is_group {
+        // Check for duplicate group chat by name
+        if let Some(ref chat_name) = name {
+            if let Some(_) = chats::Entity::find()
+                .filter(chats::Column::IsGroup.eq(1))
+                .filter(chats::Column::Name.eq(chat_name.clone()))
+                .one(&*db)
+                .await
+                .map_err(ServerError::DatabaseError)?
+            {
+                return Err(ServerError::ChatAlreadyExists);
+            }
+        }
+    } else if member_ids.len() == 2 {
+        let user_a = member_ids[0];
+        let user_b = member_ids[1];
+
+        // Get chat IDs for each user
+        let chat_ids_a: HashSet<i32> = chat_members::Entity::find()
+            .filter(chat_members::Column::UserId.eq(user_a))
+            .select_only()
+            .column(chat_members::Column::ChatId)
+            .into_tuple()
+            .all(&*db)
+            .await
+            .map_err(ServerError::DatabaseError)?
+            .into_iter()
+            .collect();
+
+        let chat_ids_b: HashSet<i32> = chat_members::Entity::find()
+            .filter(chat_members::Column::UserId.eq(user_b))
+            .select_only()
+            .column(chat_members::Column::ChatId)
+            .into_tuple()
+            .all(&*db)
+            .await
+            .map_err(ServerError::DatabaseError)?
+            .into_iter()
+            .collect();
+
+        // Find overlapping chat IDs
+        let common_ids: Vec<i32> = chat_ids_a.intersection(&chat_ids_b).copied().collect();
+
+        if !common_ids.is_empty() {
+            // Check if any overlapping chat is not a group (i.e. a 1:1 chat)
+            if let Some(_) = entity::chats::Entity::find()
+                .filter(chats::Column::Id.is_in(common_ids))
+                .filter(chats::Column::IsGroup.eq(0))
+                .one(&*db)
+                .await
+                .map_err(ServerError::DatabaseError)?
+            {
+                return Err(ServerError::ChatAlreadyExists);
+            }
+        }
+    }
+
     let new_chat = entity::chats::ActiveModel {
         name: Set(name),
         is_group: Set(is_group as i8),
@@ -51,8 +112,6 @@ pub async fn is_user_chat_member(chat_id: i32, user_id: i32, db: Arc<DatabaseCon
         false
     }
 }
-
-use std::collections::HashMap;
 
 pub async fn get_user_chats(
     user_id: i32,
@@ -139,10 +198,17 @@ pub async fn get_paginated_messages(
         .filter(entity::messages::Column::ChatId.eq(chat_id))
         .order_by_asc(entity::messages::Column::Timestamp)
         .paginate(&*db, page_size);
-    
-    let total = paginator.num_pages().await.map_err(ServerError::DatabaseError)?;
 
-    let messages: Vec<entity::messages::Model> = paginator.fetch_page(total - page - 1).await?;
+    let total = paginator.num_pages().await.map_err(ServerError::DatabaseError)?;
+    let page = {
+        if total > 0 {
+            total - page - 1
+        } else {
+            0
+        }
+    };
+
+    let messages: Vec<entity::messages::Model> = paginator.fetch_page(page).await?;
     Ok(messages)
 }
 

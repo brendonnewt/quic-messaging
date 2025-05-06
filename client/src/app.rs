@@ -1,5 +1,5 @@
 use crate::ui::create_chat::ChatCreationPhase;
-use quinn::{Connection};
+use quinn::{Connection, RecvStream};
 use ratatui::widgets::ListState;
 use rustls::Error;
 use tracing::error;

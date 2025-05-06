@@ -8,13 +8,14 @@ use crate::app::App;
 use run::run_app;
 
 use futures::StreamExt;
-use quinn::{ClientConfig, Endpoint, TransportConfig};
+use quinn::{ClientConfig, Endpoint, RecvStream, TransportConfig};
 use rustls::client::{ClientConfig as RustlsClientConfig, ServerCertVerified, ServerCertVerifier};
 use std::error::Error;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use tokio::time::timeout;
 use tracing_subscriber::prelude::*;
 
 struct TestVerifier;
@@ -56,8 +57,43 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     let server_addr: SocketAddr = port.parse()?;
     let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
     let conn = Arc::new(new_conn);
+    let conn_clone = conn.clone();
+
+    tokio::spawn(async move {
+        let recv_stream = conn_clone.accept_uni().await;
+        if let Ok(stream) = recv_stream {
+            check_for_refresh(stream).await;
+        }
+    });
 
     let mut app = App::new(conn);
     run_app(&mut app).await?;
     Ok(())
+}
+
+async fn check_for_refresh(mut recv: RecvStream) {
+    loop {
+        let mut len_buf = [0u8; 4];
+
+        let result = timeout(Duration::from_millis(10), recv.read_exact(&mut len_buf)).await;
+
+        match result {
+            Ok(Ok(_)) => {
+                let len = u32::from_be_bytes(len_buf) as usize;
+                let mut buf = vec![0u8; len];
+                if let Ok(_) = recv.read_exact(&mut buf).await {
+                    // deserialize and handle refresh
+                    println!("Received refresh command");
+                }
+            }
+            Ok(Err(e)) => {
+                eprintln!("recv error: {:?}", e);
+                break;
+            }
+            Err(_) => {
+                // timeout -> no data, keep looping or return
+                break;
+            }
+        }
+    }
 }

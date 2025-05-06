@@ -15,7 +15,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, warn};
 use tracing_subscriber;
 use dashmap::DashMap;
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Server listening on {}", addr);
 
     // List of Logged_In Users
-    let logged_in = Arc::new(DashMap::<String, ()>::new());
+    let logged_in = Arc::new(DashMap::<String, Arc<RwLock<SendStream>>>::new());
 
     while let Some(conn) = endpoint.accept().await {
         tokio::spawn(handle_connection(conn, db_arc.clone(), logged_in.clone()));
@@ -51,14 +51,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<String, ()>>) {
+async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<String, Arc<RwLock<SendStream>>>>) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
+            let send_refresh = match connection.open_uni().await {
+                Ok(send) => send,
+                Err(err) => {
+                    error!("{}", err);
+                    return;
+                }
+            };
+            let refresh_stream = Arc::new(RwLock::new(send_refresh));
 
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 let logged_in = logged_in.clone();
+                let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
                         // Get a ClientRequest JSON
@@ -85,13 +94,13 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                         };
 
                         // Match command and forward message to the appropriate controller
-                        let response = handle_command(req, db.clone(), logged_in.clone()).await;
+                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
 
                         let users: Vec<String> = logged_in.iter().map(|r| r.key().clone()).collect();
                         info!("List Of Logged In Users: {:?}", users);
 
 
-                    // Send the response
+                        // Send the response
                         if let Err(e) = send_response(&mut send, response).await {
                             error!("Error sending response, closing...: {:?}", e);
                             return;
@@ -105,13 +114,13 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<String, ()>>) -> ServerResponse {
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<String, Arc<RwLock<SendStream>>>>, refresh_stream: Arc<RwLock<SendStream>>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
             // User is automatically logged in upon registration
             if result.is_ok() {
-                logged_in.insert(username, ());
+                logged_in.insert(username, refresh_stream);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
@@ -121,7 +130,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         Command::Login { username, password } => {
             let result = auth_controller::login(username.clone(), password, db.clone()).await;
             if result.is_ok() {
-                logged_in.insert(username, ());
+                logged_in.insert(username, refresh_stream);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")

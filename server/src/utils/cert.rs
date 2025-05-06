@@ -22,17 +22,14 @@ pub fn generate_self_signed_cert() -> ServerConfig {
     // Configure transport settings
     let mut transport_config = TransportConfig::default();
 
-    // keep your existing settings…
     transport_config.max_concurrent_bidi_streams(100_u32.into());
 
-    // extend idle timeout to 5 minutes:
     transport_config.max_idle_timeout(
         Some(Duration::from_secs(300)  // 300s = 5min
             .try_into()
             .expect("valid idle timeout")),
     );
 
-    // (optional) send a keep-alive every 30s so connection stays active
     transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
 
     server_config.transport = Arc::new(transport_config);

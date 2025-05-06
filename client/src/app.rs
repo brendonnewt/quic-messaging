@@ -1,7 +1,10 @@
 use std::sync::Arc;
 use quinn::{Connection, RecvStream, SendStream};
 use ratatui::widgets::ListState;
+use rustls::Error;
+use tracing::error;
 use shared::client_response::{ClientRequest, Command};
+use shared::models::user_models::{FriendRequestList, UserList};
 use shared::server_response::ServerResponse;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -28,6 +31,27 @@ pub enum FormState {
     UserMenu {
         selected_index: usize,
     },
+    AddFriend {
+        id: String,
+        active_field: ActiveField,
+    },
+    FriendMenu {
+        selected_index: usize,
+    },
+    FriendRequests {
+        selected_index: usize,
+    },
+    ConfirmFriendRequest {
+        selected_index: usize,
+        selected_option: usize, // Usize where 0 = accept and 1 = decline
+    },
+    FriendList{
+        selected_index: usize,
+    },
+    ConfirmUnfriend {
+        selected_index: usize,
+        selected_option: usize,
+    },
     Exit,
 }
 
@@ -40,6 +64,10 @@ pub struct App {
     pub username: String,
     pub jwt: String,
     pub list_state: ListState,
+    pub friend_requests: Result<FriendRequestList, serde_json::Error>,
+    pub friend_request_num: usize,
+    pub friend_list: Result<UserList, serde_json::Error>,
+    pub friend_list_num: usize,
 }
 
 impl App {
@@ -53,6 +81,10 @@ impl App {
             username: "".to_string(),
             jwt: "".to_string(),
             list_state: ListState::default(),
+            friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
+            friend_request_num: 0,
+            friend_list: Ok(UserList { users: vec![] }),
+            friend_list_num: 0,
         }
     }
 
@@ -101,6 +133,40 @@ impl App {
     pub fn set_main_menu(&mut self) {
         self.state = FormState::MainMenu;
     }
+
+    pub fn set_add_friend(&mut self) {
+        self.state = FormState::AddFriend {
+            id: String::new(),
+            active_field: ActiveField::Username,
+        };
+    }
+
+    pub fn set_friend_menu(&mut self) {
+        self.state = FormState::FriendMenu {selected_index: 0}
+    }
+
+    pub fn set_friend_requests(&mut self) {
+        self.state = FormState::FriendRequests {selected_index: 0}
+    }
+
+    pub fn set_confirm_friend_request(&mut self, req_index: usize) {
+        self.state = FormState::ConfirmFriendRequest {
+            selected_index: req_index,
+            selected_option: 0,
+        };
+    }
+
+    pub fn set_confirm_unfriend(&mut self, req_index: usize) {
+        self.state = FormState::ConfirmUnfriend {
+            selected_index: req_index,
+            selected_option: 0,
+        }
+    }
+
+    pub fn set_friend_list(&mut self) {
+        self.state = FormState::FriendList {selected_index: 0}
+    }
+
 
     // Add the set_exit method
     pub fn set_exit(&mut self) {
@@ -152,9 +218,36 @@ impl App {
         }
     }
 
+    pub fn set_friend_request_num(&mut self, friend_request_num: usize) {
+        self.friend_request_num = friend_request_num;
+    }
+
+    pub fn set_friend_list_num(&mut self, friend_list_num: usize) {
+        self.friend_list_num = friend_list_num;
+    }
+
     pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {
         if let FormState::UserMenu { selected_index: s } = &mut self.state {
             *s = selected_index;
+        }
+    }
+
+    pub async fn logout(&mut self) -> (){
+        let req = ClientRequest {
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::Logout {
+                username: self.username.clone(),
+            },
+        };
+        match self.send_request(&req).await {
+            Ok(response) => {
+                if response.success {
+                    self.set_main_menu();
+                }
+            }
+            Err(e) => {
+                error!("Error sending logout request: {:?}", e);
+            }
         }
     }
 }

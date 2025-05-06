@@ -32,6 +32,20 @@ pub async fn get_info(
     }
 }
 
+pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<User, ServerError> {
+    let user = user_repository::get_user_by_username(username, db).await?;
+
+    match user {
+        Some(user) => {
+            Ok(User {
+                id: user.id,
+                username: user.username,
+            })
+        },
+        None => Err(ServerError::UserNotFound),
+    }
+}
+
 pub async fn send_friend_request(
     jwt: String,
     receiver_id: i32,
@@ -158,6 +172,9 @@ pub async fn remove_friend(
 
     // Delete the friendship from the database
     user_repository::delete_friendship(user_id, friend_id, db.clone()).await?;
+
+    // Delete all friend requests
+    user_repository::delete_friend_requests(user_id, friend_id, db.clone()).await?;
 
     Ok(ServerResponseModel { success: true })
 }

@@ -35,8 +35,16 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         } else {
             Style::default()
         };
-        ListItem::new(chat.chat_name.clone()).style(style)
+
+        let display_name = if chat.unread_count > 0 {
+            format!("{} ({})", chat.chat_name, chat.unread_count)
+        } else {
+            chat.chat_name.clone()
+        };
+
+        ListItem::new(display_name).style(style)
     }).collect();
+
 
     let list = List::new(items)
         .block(Block::default().title("Chats").borders(Borders::ALL))

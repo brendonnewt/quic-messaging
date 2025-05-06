@@ -45,10 +45,6 @@ pub async fn get_unread_message_count(jwt: String, db: Arc<DatabaseConnection>) 
     chat_service::get_unread_message_count(jwt, db.clone()).await
 }
 
-pub async fn get_unread_chat_message_count(jwt: String, chat_id: i32, db: Arc<DatabaseConnection>) -> Result<Count, ServerError> {
-    chat_service::get_unread_chat_message_count(jwt, chat_id, db.clone()).await
-}
-
 pub async fn mark_messages_read(jwt: String, chat_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
     chat_service::mark_messages_read(jwt, chat_id, db.clone()).await
 }

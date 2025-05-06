@@ -1,12 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use crate::entity::chats::Column;
 use crate::{entity, utils};
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectModel, Set};
-use std::sync::Arc;
 use entity::{chat_members, chats};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, SelectModel, Set,
+};
 use shared::models::user_models::User;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use utils::errors::server_error::ServerError;
-use crate::entity::chats::Column;
 
 pub async fn create_new_chat(
     name: Option<String>,
@@ -152,12 +155,16 @@ pub async fn get_user_chats(
     let mut chats = chats;
     chats.sort_by_key(|chat| {
         // Default to the chat's created_at if no message
-        std::cmp::Reverse(latest_by_chat.get(&chat.id).cloned().unwrap_or(chat.created_at))
+        std::cmp::Reverse(
+            latest_by_chat
+                .get(&chat.id)
+                .cloned()
+                .unwrap_or(chat.created_at),
+        )
     });
 
     Ok(chats)
 }
-
 
 pub async fn get_other_usernames_in_chat(
     chat_id: i32,
@@ -199,7 +206,10 @@ pub async fn get_paginated_messages(
         .order_by_asc(entity::messages::Column::Timestamp)
         .paginate(&*db, page_size);
 
-    let total = paginator.num_pages().await.map_err(ServerError::DatabaseError)?;
+    let total = paginator
+        .num_pages()
+        .await
+        .map_err(ServerError::DatabaseError)?;
     let page = {
         if total > 0 {
             total - page - 1
@@ -222,7 +232,10 @@ pub async fn get_chat_page_count(
         .order_by_desc(entity::messages::Column::Timestamp)
         .paginate(&*db, page_size);
 
-    paginator.num_pages().await.map_err(|err| ServerError::DatabaseError(err))
+    paginator
+        .num_pages()
+        .await
+        .map_err(|err| ServerError::DatabaseError(err))
 }
 
 pub async fn send_message(
@@ -232,7 +245,6 @@ pub async fn send_message(
     content: String,
     db: Arc<DatabaseConnection>,
 ) -> Result<(), ServerError> {
-    
     let new_msg = entity::messages::ActiveModel {
         chat_id: Set(chat_id),
         sender_id: Set(sender_id),
@@ -243,10 +255,24 @@ pub async fn send_message(
         ..Default::default()
     };
 
-    new_msg
+    let inserted_msg: entity::messages::Model = new_msg
         .insert(&*db)
         .await
         .map_err(ServerError::DatabaseError)?;
+
+    let message_id = inserted_msg.id;
+
+    let now = Utc::now().naive_utc();
+    let read = entity::message_reads::ActiveModel {
+        message_id: Set(message_id),
+        user_id: Set(sender_id),
+        read_at: Set(now),
+    };
+
+    read.insert(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
     Ok(())
 }
 

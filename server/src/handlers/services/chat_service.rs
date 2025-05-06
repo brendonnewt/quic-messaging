@@ -74,10 +74,13 @@ pub async fn get_user_chats(jwt: String, db: Arc<DatabaseConnection>) -> Result<
                     Err(_) => String::new(),
                 }
             };
+            
+            let unread_count = get_unread_chat_message_count(user_id, c.id, db.clone()).await;
 
             chat_models::Chat {
                 id: c.id,
                 chat_name: name,
+                unread_count: unread_count.unwrap_or_else(|_| 0)
             }
         }
     });
@@ -174,20 +177,15 @@ pub async fn mark_messages_read(
 
 // Get unread message count for a chat
 pub async fn get_unread_chat_message_count(
-    jwt: String,
+    user_id: i32,
     chat_id: i32,
     db: Arc<DatabaseConnection>,
-) -> Result<Count, ServerError> {
-    let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
-    let user_id = claim.claims.user_id;
-
+) -> Result<u64, ServerError> {
     let messages = chat_repository::get_chat_messages(chat_id, db.clone()).await?;
 
     let unread_count = get_unread_count(user_id, false, messages, db.clone()).await?;
 
-    Ok(Count {
-        count: unread_count,
-    })
+    Ok(unread_count)
 }
 
 pub async fn get_unread_message_count(

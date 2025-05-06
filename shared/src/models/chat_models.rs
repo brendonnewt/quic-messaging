@@ -9,6 +9,7 @@ pub struct ChatList {
 pub struct Chat {
     pub id: i32,
     pub chat_name: String,
+    pub unread_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

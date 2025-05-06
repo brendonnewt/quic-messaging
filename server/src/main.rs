@@ -138,10 +138,19 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         }
 
         Command::SendFriendRequest {receiver_username} => {
-            let user = user_controller::get_user_by_username(receiver_username.clone(), db.clone()).await;
-            let jwt = req.jwt;
-            let result = user_controller::add_friend(jwt.clone().unwrap(), user.unwrap().id, db.clone()).await;
-            build_response(result, jwt.clone(), "Friend Request Sent")
+            if let Some(jwt) = req.jwt {
+                let user = user_controller::get_user_by_username(receiver_username.clone(), db.clone()).await;
+                match user {
+                    Ok(user) => {
+                        build_response(user_controller::add_friend(jwt.clone(), user.id, db.clone()).await, Some(jwt.clone()), "Friend Request Sent")
+                    },
+                    Err(e) => {
+                        build_response::<(), utils::errors::server_error::ServerError>(Err(e), None, "")
+                    }
+                }
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
         }
 
         Command::GetFriendRequests {} => {
@@ -160,12 +169,6 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             let jwt = req.jwt;
             let result = user_controller::decline_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
             build_response(result, jwt.clone(), "Friend Request Denied")
-        }
-
-        Command::GetFriends {} => {
-            let jwt = req.jwt;
-            let result = user_controller::get_friends(jwt.clone().unwrap(), db.clone()).await;
-            build_response(result, jwt.clone(), "Friend List Sent")
         }
 
         Command::RemoveFriend {friend_id} => {

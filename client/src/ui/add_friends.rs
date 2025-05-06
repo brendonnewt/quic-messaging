@@ -64,6 +64,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             id.push(c)
         }
         Enter => {
+            if id.clone().trim().is_empty() {
+                return;
+            }
             let req = ClientRequest {
                 jwt: Option::from(app_jwt),
                 command: Command::SendFriendRequest {

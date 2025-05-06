@@ -95,6 +95,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
 
         Enter => {
+            if app.friend_request_num <= 0 {
+                return;
+            }
             let idx = if let FormState::FriendRequests { selected_index } = &app.state {
                 *selected_index
             } else {

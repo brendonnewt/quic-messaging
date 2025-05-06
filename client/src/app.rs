@@ -162,7 +162,7 @@ impl App {
             }
         }
     }
-    
+
     pub async fn get_friends(&mut self) -> Vec<User> {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
@@ -415,7 +415,7 @@ impl App {
             self.get_chat_messages(chat_id, chat_name, page_count, page, page_size).await;
         }
     }
-    
+
     pub async fn get_chat_messages(&mut self, chat_id: i32, chat_name: String, page_count: u64, page: u64, page_size: u64) {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),

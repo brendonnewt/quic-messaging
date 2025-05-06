@@ -156,7 +156,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         if let Some(jwt) = response.jwt.clone() {
                             app.jwt = jwt;
                             app.username = username.clone();
-                            app.state = FormState::UserMenu { selected_index: 0 };
+                            app.message = format!("Welcome {}!", app.username.clone());
+                            app.set_user_menu().await;
                         }
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
@@ -169,7 +170,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Esc => {
             app.set_main_menu(); // Navigate back to the main menu
-            app.message = "Returning to main menu...".to_string();
         }
         _ => {}
     }

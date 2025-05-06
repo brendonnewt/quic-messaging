@@ -347,6 +347,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2206,6 +2207,7 @@ dependencies = [
  "dashmap",
  "dotenv",
  "dotenvy",
+ "futures",
  "jsonwebtoken",
  "lazy_static",
  "quinn",

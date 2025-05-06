@@ -2,7 +2,7 @@ pub mod entity;
 pub mod handlers;
 pub mod utils;
 
-use crate::handlers::controllers::{auth_controller, user_controller};
+use crate::handlers::controllers::{auth_controller, chat_controller, user_controller};
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
@@ -174,6 +174,71 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, jwt.clone(), "Unfriended")
         }
 
+        
+        Command::GetChats => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_user_chats(jwt, db.clone()).await, None, "Chat List")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+        
+        Command::GetChatMessages { chat_id, page, page_size} => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_chat_messages(jwt, chat_id, page, page_size, db.clone()).await, None, "Chat Messages")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+        
+        Command::SendMessage { chat_id, content} => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::send_message(jwt, chat_id, content, db.clone()).await, None, "Message Sent")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
+        Command::GetChatPages { chat_id, page_size } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await, None, "Chat Page Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
+        Command::GetFriends => {
+            if let Some(jwt) = req.jwt {
+                build_response(user_controller::get_friends(jwt, db.clone()).await, None, "Friends")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
+        Command::CreateChat { member_ids, name, is_group } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::create_chat(jwt, name, is_group, member_ids, db.clone()).await, None, "Chat Page Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+        
+        Command::GetUnreadMessageCount => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::get_unread_message_count(jwt, db.clone()).await, None, "Unread Message Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+        
+        Command::MarkMessagesRead { chat_id } => {
+            if let Some(jwt) = req.jwt {
+                build_response(chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await, None, "Unread Message Count")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+            }
+        }
+
         other => {
             // Shouldn't be possible, but covering the case.
             build_response::<(), ServerError>(
@@ -285,6 +350,9 @@ async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
 async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, ServerError> {
     match serde_json::from_slice(&buf) {
         Ok(r) => Ok(r),
-        Err(_) => Err(ServerError::RequestInvalid("Invalid JSON".to_string())),
+        Err(e) => {
+            println!("{}", e.to_string());
+            Err(ServerError::RequestInvalid("Invalid JSON".to_string()))
+        },
     }
 }

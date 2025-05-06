@@ -47,6 +47,15 @@ pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             FormState::ConfirmUnfriend { .. } => {
                 ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
             }
+            FormState::Chats { .. } => {
+                ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Chat { .. } => {
+                ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ChatCreation(phase) => {
+                ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
+            }
             FormState::Exit => return,
         })?;
 
@@ -91,52 +100,26 @@ pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 // Main menu navigation
-                FormState::MainMenu => match key.code {
-                    KeyCode::Up => {
-                        if app.selected_index > 0 {
-                            app.selected_index -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if app.selected_index < 2 {
-                            app.selected_index += 1;
-                        }
-                    }
-                    KeyCode::Enter | KeyCode::Char('\r') => match app.selected_index {
-                        0 => app.set_login_form(),
-                        1 => app.set_register_form(),
-                        2 => app.set_exit(),
-                        _ => {}
-                    },
-                    _ => {}
+                FormState::MainMenu => {
+                    ui::main_menu::handle_input(app, key).await;
+                }
+                
+                FormState::Chats { .. } => {
+                    ui::chats::handle_input(app, key).await;
+                }
+                
+                FormState::Chat { .. } => {
+                    ui::chat::handle_input(app, key).await;
                 },
+                
+                FormState::ChatCreation(..) => {
+                    ui::create_chat::handle_input(app, key).await;
+                }
 
                 // User menu navigation (post-login)
-                FormState::UserMenu { selected_index } => match key.code {
-                    KeyCode::Up => {
-                        if *selected_index > 0 {
-                            *selected_index -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if *selected_index + 1 < 6 {
-                            *selected_index += 1;
-                        }
-                    }
-                    KeyCode::Enter | KeyCode::Char('\r') => {
-                        match *selected_index {
-                            0 => { /* Chats */ }
-                            1 => { /* Chatroom */ }
-                            2 => app.set_add_friend(),
-                            3 => app.set_friend_menu(),
-                            4 => { /* Settings */ }
-                            5 => { app.logout().await } // Log Out -> back to main menu
-                            _ => {}
-                        }
-                    }
-                    KeyCode::Esc => { app.logout().await }
-                    _ => {}
-                },
+                FormState::UserMenu { .. } => {
+                    ui::user_menu::handle_input(app, key).await;
+                }
 
                 // Any other state: do nothing
                 _ => {}

@@ -47,17 +47,23 @@ pub enum Command {
         chat_id: i32,
         content: String,
     },
+    GetChats,
     GetChatMessages {
         chat_id: i32,
         page: u64,
         page_size: u64,
     },
+    GetChatPages {
+        chat_id: i32,
+        page_size: u64,
+    },
     MarkMessagesRead {
         chat_id: i32,
     },
-    GetUnreadMessageCount {
+    GetUnreadChatMessageCount {
         chat_id: i32,
     },
+    GetUnreadMessageCount,
     Logout {
         username: String,
     }

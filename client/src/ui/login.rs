@@ -8,6 +8,8 @@ use ratatui::{
     Frame,
 };
 use shared::client_response::{ClientRequest, Command};
+use shared::models::auth_models::AuthResponseModel;
+use shared::models::chat_models::ChatList;
 use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
@@ -107,10 +109,21 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             match app.send_request(&req).await {
                 Ok(response) => {
                     if response.success {
-                        if let Some(jwt) = response.jwt.clone() {
-                            app.jwt = jwt;
-                            app.username = username.clone();
-                            app.state = FormState::UserMenu { selected_index: 0 };
+                        if let Some(data) = response.data {
+                            match serde_json::from_value::<AuthResponseModel>(data) {
+                                Ok(auth_response) => {
+                                    if let Some(jwt) = response.jwt.clone() {
+                                        app.jwt = jwt;
+                                        app.user_id = auth_response.user_id;
+                                        app.username = username.clone();
+                                        app.message = format!("Welcome {}!", username);
+                                        app.set_user_menu().await;
+                                    }
+                                }
+                                Err(e) => {
+                                    app.message = format!("Parse error: {}", e);
+                                }
+                            }
                         }
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;

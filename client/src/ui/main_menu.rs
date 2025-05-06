@@ -1,3 +1,5 @@
+use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
     layout::{Layout, Constraint, Direction},
@@ -5,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::{App};
+use crate::app::{App, FormState};
 use ratatui::widgets::ListState;
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
@@ -71,4 +73,26 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     // Enable scrolling
     let mut list_state = app.list_state.clone();
     f.render_stateful_widget(list, chunks[1], &mut list_state);
+}
+
+pub async fn handle_input(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Up => {
+            if app.selected_index > 0 {
+                app.selected_index -= 1;
+            }
+        }
+        KeyCode::Down => {
+            if app.selected_index < 2 {
+                app.selected_index += 1;
+            }
+        }
+        KeyCode::Enter | KeyCode::Char('\r') => match app.selected_index {
+            0 => app.set_login_form(),
+            1 => app.set_register_form(),
+            2 => app.set_exit(),
+            _ => {}
+        },
+        _ => {}
+    }
 }

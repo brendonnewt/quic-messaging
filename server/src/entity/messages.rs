@@ -9,6 +9,7 @@ pub struct Model {
     pub id: i32,
     pub chat_id: i32,
     pub sender_id: i32,
+    pub sender_username: String,
     #[sea_orm(column_type = "Text")]
     pub content: String,
     pub read: i8,

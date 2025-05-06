@@ -30,6 +30,7 @@ pub async fn register(
         return Ok(AuthResponseModel {
             success: true,
             token,
+            user_id
         });
     }
 
@@ -56,6 +57,7 @@ pub async fn login(
             Ok(AuthResponseModel {
                 success: true,
                 token,
+                user_id: user.id
             })
         } else {
             Err(ServerError::UserNotFound)

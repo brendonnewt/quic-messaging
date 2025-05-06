@@ -21,6 +21,7 @@ futures = { version = "0.3.30", features = ["thread-pool"] }
 
 # TUI dependencies (if you’re building a UI later)
 ratatui = "0.28.1"
+unicode-width = "0.1"
 crossterm = "0.26"
 # IP + TCP header parsing
 etherparse = "0.13.0"

@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS messages (
                           id INT AUTO_INCREMENT PRIMARY KEY,
                           chat_id INT NOT NULL,
                           sender_id INT NOT NULL,
+                          sender_username VARCHAR(255) NOT NULL,
                           content TEXT NOT NULL,
                           `read` BOOLEAN DEFAULT FALSE NOT NULL,
                           timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,

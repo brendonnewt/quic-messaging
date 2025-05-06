@@ -73,10 +73,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             match app.send_request(&req).await {
                 Ok(response) => {
                     if response.success {
-                        if let Some(jwt) = response.jwt.clone() {
-                            app.jwt = jwt;
-                            app.state = FormState::UserMenu { selected_index: 0 };
-                        }
+                        app.set_user_menu().await;
+                        app.message = "Friend request sent!".to_string()
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
                     }
@@ -87,8 +85,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
         Esc => {
-            app.set_user_menu();
-            app.message = "Returning to user menu...".into();
+            app.set_user_menu().await;
+            app.message = "".to_string();
         }
         _ => {}
     }

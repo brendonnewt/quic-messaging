@@ -8,3 +8,6 @@ pub mod friend_requests;
 pub mod confirm_friend_request;
 pub mod friend_list;
 pub mod confirm_unfriend;
+pub mod chats;
+pub mod chat;
+pub mod create_chat;

@@ -22,6 +22,7 @@ tracing = "0.1.41"
 rcgen = "0.11"
 rustls = { version = "0.21" }
 dotenvy = "0.15"
+futures = "0.3.31"
 dashmap = "7.0.0-rc2"
 [[bin]]
 name = "server"

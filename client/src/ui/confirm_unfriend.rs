@@ -73,9 +73,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     Ok(response) => {
                         if response.success{
                             app.friend_list.as_mut().unwrap().users.remove(req_idx);
-                            if let Some(message) = response.message.clone(){
-                                app.message = message;
-                            }
                         }
                     },
                     Err(err) => {

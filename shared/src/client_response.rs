@@ -19,7 +19,7 @@ pub enum Command {
     },
     GetInfo {},
     SendFriendRequest {
-        receiver_id: i32,
+        receiver_username: String,
     },
     AcceptFriendRequest {
         sender_id: i32,
@@ -64,4 +64,7 @@ pub enum Command {
         chat_id: i32,
     },
     GetUnreadMessageCount,
+    Logout {
+        username: String,
+    }
 }

@@ -8,12 +8,12 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use shared::client_response::{ClientRequest, Command};
 use std::io::{self, Stdout};
 use std::sync::Arc;
+use tracing::{error, info};
 
-pub async fn run_app(
-    app: &mut App,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -22,30 +22,41 @@ pub async fn run_app(
 
     loop {
         // 1) Draw the appropriate UI for the current state
-        terminal.draw(|f| {
-            match &app.state {
-                FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
-                FormState::LoginForm { .. } => {
-                    ui::login::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::RegisterForm { .. } => {
-                    ui::registration::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::UserMenu { .. } => {
-                    ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::Chats { .. } => {
-                    ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::Chat { .. } => {
-                    ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::ChatCreation(phase) => {
-                    ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
-                }
-                FormState::Exit => return, // stops drawing, we’ll break below
-                _ => return,
+        terminal.draw(|f| match &app.state {
+            FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::LoginForm { .. } => ui::login::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::RegisterForm { .. } => {
+                ui::registration::render::<CrosstermBackend<Stdout>>(f, app)
             }
+            FormState::UserMenu { .. } => ui::user_menu::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::AddFriend { .. } => {
+                ui::add_friends::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendMenu { .. } => {
+                ui::friends_menu::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendRequests { .. } => {
+                ui::friend_requests::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ConfirmFriendRequest { .. } => {
+                ui::confirm_friend_request::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::FriendList { .. } => {
+                ui::friend_list::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ConfirmUnfriend { .. } => {
+                ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Chats { .. } => {
+                ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Chat { .. } => {
+                ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::ChatCreation(phase) => {
+                ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Exit => return,
         })?;
 
         if matches!(app.state, FormState::Exit) {
@@ -65,30 +76,32 @@ pub async fn run_app(
                     ui::login::handle_input(app, key).await;
                 }
 
-                // Main menu navigation
-                FormState::MainMenu => match key.code {
-                    KeyCode::Up => {
-                        if app.selected_index > 0 {
-                            app.selected_index -= 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        if app.selected_index < 2 {
-                            app.selected_index += 1;
-                        }
-                    }
-                    KeyCode::Enter | KeyCode::Char('\r') => match app.selected_index {
-                        0 => app.set_login_form(),
-                        1 => app.set_register_form(),
-                        2 => app.set_exit(),
-                        _ => {}
-                    },
-                    _ => {}
+                FormState::AddFriend { .. } => {
+                    ui::add_friends::handle_input(app, key).await;
                 }
-                
-                // User menu navigation (post-login)
-                FormState::UserMenu { .. } => {
-                    ui::user_menu::handle_input(app, key).await;
+
+                FormState::FriendMenu { .. } => {
+                    ui::friends_menu::handle_input(app, key).await;
+                }
+
+                FormState::FriendRequests { .. } => {
+                    ui::friend_requests::handle_input(app, key).await;
+                }
+                FormState::ConfirmFriendRequest { .. } => {
+                    ui::confirm_friend_request::handle_input(app, key).await;
+                }
+
+                FormState::FriendList { .. } => {
+                    ui::friend_list::handle_input(app, key).await;
+                }
+
+                FormState::ConfirmUnfriend { .. } => {
+                    ui::confirm_unfriend::handle_input(app, key).await;
+                }
+
+                // Main menu navigation
+                FormState::MainMenu => {
+                    ui::main_menu::handle_input(app, key).await;
                 }
                 
                 FormState::Chats { .. } => {
@@ -101,6 +114,11 @@ pub async fn run_app(
                 
                 FormState::ChatCreation(..) => {
                     ui::create_chat::handle_input(app, key).await;
+                }
+
+                // User menu navigation (post-login)
+                FormState::UserMenu { .. } => {
+                    ui::user_menu::handle_input(app, key).await;
                 }
 
                 // Any other state: do nothing

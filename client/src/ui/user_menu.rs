@@ -41,7 +41,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     }).collect();
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Your Menu"))
+        .block(Block::default().borders(Borders::ALL).title("Logged In"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     f.render_widget(list, main_chunks[0]);
@@ -68,15 +68,18 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     app.enter_chats_view().await
                 }, // index 0 = Chats
                 // 1 => app.state = FormState::Chatroom,
-                // 2 => app.state = FormState::AddFriends,
-                // 3 => app.state = FormState::FriendList,
+                2 => {
+                    app.message = "".to_string();
+                    app.set_add_friend()
+                },
+                3 => {
+                    app.message = "".to_string();
+                    app.set_friend_menu()
+                },
                 // 4 => app.state = FormState::Settings,
                 5 => {
-                    app.jwt = "".to_string();
-                    app.user_id = -1;
-                    app.username = "".to_string();
                     app.message = "".to_string();
-                    app.set_main_menu()
+                    app.logout().await
                 }, // Log Out
                 _ => {}
             },

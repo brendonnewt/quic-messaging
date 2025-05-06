@@ -17,7 +17,7 @@ pub struct UserList {
     pub users: Vec<User>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FriendRequestList {
     pub incoming: Vec<User>,
     pub outgoing: Vec<User>,

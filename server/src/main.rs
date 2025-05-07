@@ -179,6 +179,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         Command::AcceptFriendRequest {sender_id} => {
             let jwt = req.jwt;
             let result = user_controller::accept_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
+            notify_users(vec![sender_id], logged_in.clone()).await;
             build_response(result, jwt.clone(), "Friend Request Accepted")
         }
 
@@ -191,6 +192,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         Command::RemoveFriend {friend_id} => {
             let jwt = req.jwt;
             let result = user_controller::remove_friend(jwt.clone().unwrap(), friend_id, db.clone()).await;
+            notify_users(vec![friend_id], logged_in.clone()).await;
             build_response(result, jwt.clone(), "Unfriended")
         }
 

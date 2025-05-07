@@ -74,7 +74,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 },
                 3 => {
                     app.message = "".to_string();
-                    app.set_friend_menu()
+                    app.set_friend_menu();
                 },
                 // 4 => app.state = FormState::Settings,
                 5 => {

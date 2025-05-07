@@ -86,7 +86,7 @@ pub struct App {
     pub list_state: ListState,
     pub friend_requests: Result<FriendRequestList, serde_json::Error>,
     pub friend_request_num: usize,
-    pub friend_list: Result<UserList, serde_json::Error>,
+    pub friend_list: UserList,
     pub friend_list_num: usize,
     pub chats: Vec<Chat>,
 }
@@ -106,7 +106,7 @@ impl App {
             list_state: ListState::default(),
             friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
             friend_request_num: 0,
-            friend_list: Ok(UserList { users: vec![] }),
+            friend_list: UserList { users: vec![] },
             friend_list_num: 0,
             chats: Vec::new(),
         }
@@ -119,6 +119,12 @@ impl App {
             }
             FormState::Chats { .. } => {
                 self.enter_chats_view().await;
+            }
+            FormState::UserMenu { .. } => {
+                self.set_user_menu().await;
+            }
+            FormState::FriendList { .. } => {
+                self.set_friend_list().await;
             }
             _ => {
             }
@@ -260,8 +266,33 @@ impl App {
         }
     }
 
-    pub fn set_friend_list(&mut self) {
-        self.state = FormState::FriendList {selected_index: 0}
+    pub async fn set_friend_list(&mut self) {
+        let req = ClientRequest{
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::GetFriends {}
+        };
+        match self.send_request(&req).await {
+            Ok(resp) => {
+                if resp.success {
+                    if let Some(data) = resp.data {
+                        match serde_json::from_value::<UserList>(data) {
+                            Ok(friends) => {
+                                self.friend_list = friends;
+                                self.state = FormState::FriendList {selected_index: 0}
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    }
+                } else if let Some(message) = resp.message.clone() {
+                    self.message = message;
+                }
+            },
+            Err(e) => {
+                self.message = e.to_string();
+            }
+        }
     }
 
 

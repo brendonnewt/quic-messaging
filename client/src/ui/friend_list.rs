@@ -21,17 +21,17 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .collect::<Vec<_>>(),
         )
         .split(f.size());
-
-    let fr_list = match &app.friend_list {
-        Ok(list) => list,
-        Err(_) => {
-            // Render an empty list
+    
+    let fr_list = {
+        if app.friend_list.users.is_empty() {
             let empty = List::new(vec![ListItem::new("No Friends")]).block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title("No Friends, Much Sad"),
             );
             return f.render_widget(empty, f.size());
+        } else {
+            &app.friend_list
         }
     };
 

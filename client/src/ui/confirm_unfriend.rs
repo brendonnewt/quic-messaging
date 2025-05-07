@@ -58,7 +58,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             } else {
                 return;
             };
-            let fr_req = &app.friend_list.as_ref().unwrap().users[req_idx];
+            let fr_req = &app.friend_list.users[req_idx];
             if opt == 0{
                 let cmd = {
                     Command::RemoveFriend {
@@ -72,7 +72,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 match app.send_request(&req).await {
                     Ok(response) => {
                         if response.success{
-                            app.friend_list.as_mut().unwrap().users.remove(req_idx);
+                            app.friend_list.users.remove(req_idx);
                         }
                     },
                     Err(err) => {
@@ -81,10 +81,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             }
 
-            app.set_friend_list();
+            app.set_friend_list().await;
         }
         Esc => {
-            app.set_friend_list();
+            app.set_friend_list().await;
         }
         _ => {}
     }

@@ -117,7 +117,9 @@ impl App {
             FormState::Chat { chat_id, chat_name, page, ..} => {
                 self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE).await;
             }
-            
+            FormState::Chats { .. } => {
+                self.enter_chats_view().await;
+            }
             _ => {
             }
         }

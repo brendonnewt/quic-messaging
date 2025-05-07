@@ -60,20 +60,21 @@ async fn main()  -> Result<(), Box<dyn Error>>{
     let new_conn = endpoint.connect(server_addr, &*serv_addr)?.await?;
     let conn = Arc::new(new_conn);
     let conn_clone = conn.clone();
+    let (tx, rx) = spmc::channel::<u8>();
 
     tokio::spawn(async move {
         let recv_stream = conn_clone.accept_uni().await;
         if let Ok(stream) = recv_stream {
-            check_for_refresh(stream).await;
+            check_for_refresh(stream, tx).await;
         }
     });
 
     let mut app = App::new(conn);
-    run_app(&mut app).await?;
+    run_app(&mut app, rx).await?;
     Ok(())
 }
 
-async fn check_for_refresh(mut recv: RecvStream) {
+async fn check_for_refresh(mut recv: RecvStream, mut tx: spmc::Sender<u8>) {
     loop {
         let mut len_buf = [0u8; 4];
 
@@ -84,8 +85,12 @@ async fn check_for_refresh(mut recv: RecvStream) {
                 let len = u32::from_be_bytes(len_buf) as usize;
                 let mut buf = vec![0u8; len];
                 if let Ok(_) = recv.read_exact(&mut buf).await {
-                    let response: Result<Refresh, _> = serde_json::from_slice(&buf);
-                    println!("Received refresh command");
+                    let refresh_req: Result<Refresh, _> = serde_json::from_slice(&buf);
+                    if refresh_req.is_ok() {
+                        if let Err(e) = tx.send(0u8) {
+                            println!("Failed to send refresh: {}", e);
+                        }
+                    }
                 }
             }
             Ok(Err(e)) => {
@@ -94,7 +99,7 @@ async fn check_for_refresh(mut recv: RecvStream) {
             }
             Err(_) => {
                 // timeout -> no data, keep looping or return
-                break;
+                continue;
             }
         }
     }

@@ -392,6 +392,7 @@ async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Arc<Mutex
     for user_id in user_ids {
         if let Some(stream_ref) = stream_map.get_mut(&user_id) {
             let mut stream_lock = stream_ref.lock().await;
+            println!("Notifying user {} in stream map", user_id);
             let bytes = serde_json::to_vec(&shared::server_response::Refresh).expect("Failed to serialize refresh ping");
             let len = (bytes.len() as u32).to_be_bytes();
             if let Err(e) = stream_lock.write_all(&len).await {

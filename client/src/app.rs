@@ -11,6 +11,8 @@ use shared::models::user_models::{FriendRequestList};
 use shared::server_response::ServerResponse;
 use std::sync::Arc;
 
+const PAGE_SIZE: u64 = 10;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
     Username,
@@ -107,6 +109,17 @@ impl App {
             friend_list: Ok(UserList { users: vec![] }),
             friend_list_num: 0,
             chats: Vec::new(),
+        }
+    }
+    
+    pub async fn refresh(&mut self) {
+        match &self.state {
+            FormState::Chat { chat_id, chat_name, page, ..} => {
+                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE).await;
+            }
+            
+            _ => {
+            }
         }
     }
 

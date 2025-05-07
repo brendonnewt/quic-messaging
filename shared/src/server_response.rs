@@ -7,3 +7,6 @@ pub struct ServerResponse {
     pub message: Option<String>,
     pub data: Option<serde_json::Value>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Refresh;

@@ -4,7 +4,7 @@ mod event;
 mod run;
 mod utils;
 
-use crate::app::App;
+use crate::app::{App, FormState};
 use run::run_app;
 
 use futures::StreamExt;
@@ -17,6 +17,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time::timeout;
 use tracing_subscriber::prelude::*;
+use shared::models::chat_models::ChatList;
+use shared::server_response::Refresh;
 
 struct TestVerifier;
 impl ServerCertVerifier for TestVerifier {
@@ -82,7 +84,7 @@ async fn check_for_refresh(mut recv: RecvStream) {
                 let len = u32::from_be_bytes(len_buf) as usize;
                 let mut buf = vec![0u8; len];
                 if let Ok(_) = recv.read_exact(&mut buf).await {
-                    // deserialize and handle refresh
+                    let response: Result<Refresh, _> = serde_json::from_slice(&buf);
                     println!("Received refresh command");
                 }
             }

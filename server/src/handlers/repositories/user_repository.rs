@@ -30,12 +30,18 @@ pub async fn send_friend_request(
     receiver_id: i32,
     db: Arc<DatabaseConnection>,
 ) -> Result<(), ServerError> {
+
+    // Check if these users are already friends
+    if let Some(_) = get_friendship(sender_id, receiver_id, db.clone()).await? {
+        return Err(ServerError::AlreadyFriends)
+    }
+
     // Check if this exact request already exists
-    if let Some(existing) = get_friend_request(sender_id, receiver_id, db.clone()).await? {
+    if let Some(_) = get_friend_request(sender_id, receiver_id, db.clone()).await? {
         return Ok(())
     }
 
-    // 2. Check for a reverse request
+    // Check for a reverse request
     let reverse = get_friend_request(receiver_id, sender_id, db.clone()).await?;
 
     if let Some(existing_request) = reverse {
@@ -137,6 +143,16 @@ pub async fn delete_friendship(u1: i32, u2: i32, db: Arc<DatabaseConnection>) ->
         .map_err(ServerError::DatabaseError)?;
 
     Ok(())
+}
+
+pub async fn get_friendship(u1: i32, u2: i32, db: Arc<DatabaseConnection>) -> Result<Option<entity::friends::Model>, ServerError> {
+    entity::friends::Entity::find()
+        .filter(
+            Condition::any()
+                .add(entity::friends::Column::UserId.eq(u1).and(entity::friends::Column::FriendId.eq(u2)))
+                .add(entity::friends::Column::UserId.eq(u2).and(entity::friends::Column::FriendId.eq(u1)))
+        )
+        .one(&*db).await.map_err(|err| ServerError::DatabaseError(err))
 }
 
 pub async fn delete_friend_requests(u1: i32, u2: i32, db: Arc<DatabaseConnection>) -> Result<(), ServerError> {

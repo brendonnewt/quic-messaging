@@ -11,6 +11,9 @@ pub enum ServerError {
     #[error("User already exists")]
     UserAlreadyExists,
     
+    #[error("Friendship already exists")]
+    AlreadyFriends,
+    
     #[error("Chat already exists")]
     ChatAlreadyExists,
     

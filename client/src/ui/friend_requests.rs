@@ -74,7 +74,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         }
                     }
                     Down => {
-                        if *selected_index < app.friend_request_num {
+                        if *selected_index + 1 < app.friend_request_num {
                             *selected_index += 1;
                         }
                     }

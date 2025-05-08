@@ -70,6 +70,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             }
             Esc => {
+                app.message.clear();
                 app.set_user_menu().await;
             }
             _ => {}

@@ -173,6 +173,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Esc => {
+            app.message.clear();
             app.set_main_menu(); // Navigate back to the main menu
         }
         _ => {}

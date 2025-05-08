@@ -64,20 +64,20 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => match selected_index {
                 0 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.enter_chats_view().await
                 }, // index 0 = Chats
                 1 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.set_add_friend()
                 },
                 2 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.set_friend_menu();
                 },
                 // 4 => app.state = FormState::Settings,
                 4 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.logout().await
                 }, // Log Out
                 _ => {}

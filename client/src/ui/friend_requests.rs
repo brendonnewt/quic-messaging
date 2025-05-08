@@ -95,7 +95,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             app.set_confirm_friend_request(idx);
         }
 
-        Esc => app.set_friend_menu(),
+        Esc => {
+            app.message.clear();
+            app.set_friend_menu()
+        },
 
         _ => {}
     }

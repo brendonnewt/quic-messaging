@@ -183,6 +183,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             KeyCode::Enter => {
                 let name = name_input.trim().to_string();
                 if !name.is_empty() {
+                    if name.len() > 20 {
+                        app.message = "Group name cannot be longer than 20 characters.".into();
+                        return;   
+                    }
                     chosen.push(User {
                         id: app.user_id,
                         username: app.username.clone(),

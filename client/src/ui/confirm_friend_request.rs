@@ -88,6 +88,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 app.set_friend_requests().await;
             }
             Esc => {
+                app.message.clear();
                 app.set_friend_requests().await;
             }
             _ => {}

@@ -1,5 +1,5 @@
 use crate::ui::create_chat::ChatCreationPhase;
-use quinn::{Connection};
+use quinn::{Connection, RecvStream};
 use ratatui::widgets::ListState;
 use rustls::Error;
 use tracing::error;
@@ -10,6 +10,8 @@ use shared::models::user_models::{User, UserList};
 use shared::models::user_models::{FriendRequestList};
 use shared::server_response::ServerResponse;
 use std::sync::Arc;
+
+const PAGE_SIZE: u64 = 10;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ActiveField {
@@ -82,9 +84,9 @@ pub struct App {
     pub user_id: i32,
     pub unread_count: u64,
     pub list_state: ListState,
-    pub friend_requests: Result<FriendRequestList, serde_json::Error>,
+    pub friend_requests: FriendRequestList,
     pub friend_request_num: usize,
-    pub friend_list: Result<UserList, serde_json::Error>,
+    pub friend_list: UserList,
     pub friend_list_num: usize,
     pub chats: Vec<Chat>,
 }
@@ -102,11 +104,33 @@ impl App {
             user_id: -1,
             unread_count: 0,
             list_state: ListState::default(),
-            friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
+            friend_requests: FriendRequestList { incoming: vec![], outgoing: vec![] },
             friend_request_num: 0,
-            friend_list: Ok(UserList { users: vec![] }),
+            friend_list: UserList { users: vec![] },
             friend_list_num: 0,
             chats: Vec::new(),
+        }
+    }
+
+    pub async fn refresh(&mut self) {
+        match &self.state {
+            FormState::Chat { chat_id, chat_name, page, ..} => {
+                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE).await;
+            }
+            FormState::Chats { .. } => {
+                self.enter_chats_view().await;
+            }
+            FormState::UserMenu { .. } => {
+                self.set_user_menu().await;
+            }
+            FormState::FriendList { .. } => {
+                self.set_friend_list().await;
+            }
+            FormState::FriendRequests { .. } => {
+                self.set_friend_requests().await;
+            }
+            _ => { // These states don't need refreshing as they have no values that could be stale
+            }
         }
     }
 
@@ -227,8 +251,34 @@ impl App {
         self.state = FormState::FriendMenu {selected_index: 0}
     }
 
-    pub fn set_friend_requests(&mut self) {
-        self.state = FormState::FriendRequests {selected_index: 0}
+    pub async fn set_friend_requests(&mut self) {
+        let req = ClientRequest {
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::GetFriendRequests {}
+        };
+        match self.send_request(&req).await {
+            Ok(resp) => {
+                if resp.success {
+                    if let Some(data) = resp.data {
+                        match serde_json::from_value::<FriendRequestList>(data) {
+                            Ok(requests) => {
+                                self.friend_request_num = requests.incoming.len();
+                                self.friend_requests = requests;
+                                self.state = FormState::FriendRequests {selected_index: 0};
+                            },
+                            Err(err) => {
+                                self.message = format!("Parse error: {}", err);
+                            }
+                        }
+                    }
+                } else if let Some(message) = resp.message.clone() {
+                    self.message = message;
+                }
+            },
+            Err(e) => {
+                self.message = e.to_string();
+            }
+        }
     }
 
     pub fn set_confirm_friend_request(&mut self, req_index: usize) {
@@ -245,8 +295,34 @@ impl App {
         }
     }
 
-    pub fn set_friend_list(&mut self) {
-        self.state = FormState::FriendList {selected_index: 0}
+    pub async fn set_friend_list(&mut self) {
+        let req = ClientRequest{
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::GetFriends {}
+        };
+        match self.send_request(&req).await {
+            Ok(resp) => {
+                if resp.success {
+                    if let Some(data) = resp.data {
+                        match serde_json::from_value::<UserList>(data) {
+                            Ok(friends) => {
+                                self.friend_list_num = friends.users.len();
+                                self.friend_list = friends;
+                                self.state = FormState::FriendList {selected_index: 0}
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    }
+                } else if let Some(message) = resp.message.clone() {
+                    self.message = message;
+                }
+            },
+            Err(e) => {
+                self.message = e.to_string();
+            }
+        }
     }
 
 

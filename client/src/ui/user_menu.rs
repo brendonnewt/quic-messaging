@@ -12,7 +12,7 @@ use shared::client_response::{ClientRequest, Command};
 use crate::app::{ActiveField, App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Chatroom", "Add Friends", "Friend List", "Settings", "Log Out"];
+    let options = ["Chats", "Add Friends", "Friend List", "Settings", "Log Out"];
 
     // Split the screen into menu area and message area
     let main_chunks = Layout::default()
@@ -67,17 +67,16 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     app.message = "".to_string();
                     app.enter_chats_view().await
                 }, // index 0 = Chats
-                // 1 => app.state = FormState::Chatroom,
-                2 => {
+                1 => {
                     app.message = "".to_string();
                     app.set_add_friend()
                 },
-                3 => {
+                2 => {
                     app.message = "".to_string();
-                    app.set_friend_menu()
+                    app.set_friend_menu();
                 },
                 // 4 => app.state = FormState::Settings,
-                5 => {
+                4 => {
                     app.message = "".to_string();
                     app.logout().await
                 }, // Log Out
@@ -89,7 +88,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             }
             KeyCode::Down => {
-                if selected_index < 5 {
+                if selected_index < 4 {
                     app.set_user_menu_selected_index(selected_index + 1);
                 }
             }

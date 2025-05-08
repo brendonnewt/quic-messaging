@@ -20,19 +20,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .collect::<Vec<_>>(),
         )
         .split(f.size());
-
-    let fr_list = match &app.friend_requests {
-        Ok(list) => list,
-        Err(_) => {
-            // Render an empty list
-            let empty = List::new(vec![ListItem::new("No requests")]).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Friend Requests"),
-            );
-            return f.render_widget(empty, f.size());
-        }
-    };
+    
+    let fr_list = &app.friend_requests;
 
     let selected = if let FormState::FriendRequests { selected_index } = app.state {
         selected_index
@@ -85,7 +74,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         }
                     }
                     Down => {
-                        if *selected_index < app.friend_request_num {
+                        if *selected_index + 1 < app.friend_request_num {
                             *selected_index += 1;
                         }
                     }
@@ -95,6 +84,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
 
         Enter => {
+            if app.friend_request_num <= 0 {
+                return;
+            }
             let idx = if let FormState::FriendRequests { selected_index } = &app.state {
                 *selected_index
             } else {

@@ -11,9 +11,13 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use shared::client_response::{ClientRequest, Command};
 use std::io::{self, Stdout};
 use std::sync::Arc;
+use std::time::Duration;
+use quinn::RecvStream;
+use tokio::io::AsyncRead;
+use tokio::time::timeout;
 use tracing::{error, info};
 
-pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -21,6 +25,17 @@ pub async fn run_app(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
 
     loop {
+        match rx.try_recv() {
+            Ok(_) => {
+                app.refresh().await;
+            }
+            Err(spmc::TryRecvError::Empty) => {
+                // Nothing to report, continue
+            }
+            Err(spmc::TryRecvError::Disconnected) => {
+                // Something has gone wrong, close the program
+            }
+        }
         // 1) Draw the appropriate UI for the current state
         terminal.draw(|f| match &app.state {
             FormState::MainMenu => ui::main_menu::render::<CrosstermBackend<Stdout>>(f, app),

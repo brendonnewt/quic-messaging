@@ -21,19 +21,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .collect::<Vec<_>>(),
         )
         .split(f.size());
-
-    let fr_list = match &app.friend_list {
-        Ok(list) => list,
-        Err(_) => {
-            // Render an empty list
-            let empty = List::new(vec![ListItem::new("No Friends")]).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("No Friends, Much Sad"),
-            );
-            return f.render_widget(empty, f.size());
-        }
-    };
+    
+    let fr_list = &app.friend_list;
 
     let selected = if let FormState::FriendList { selected_index } = app.state {
         selected_index
@@ -59,10 +48,19 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .collect();
 
     app.set_friend_list_num(items.len());
+    
+    let list = {
+        if app.friend_list_num == 0 {
+            List::new(items)
+                .block(Block::default().borders(Borders::ALL).title("No friends").title("Much sad :("))
+                .highlight_style(Style::default().bg(Color::DarkGray))
+        } else {
+            List::new(items)
+                .block(Block::default().borders(Borders::ALL).title("Friend List").title("Select Friend to Unfriend Them"))
+                .highlight_style(Style::default().bg(Color::DarkGray))
 
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Friend List").title("Select Friend to Unfriend Them"))
-        .highlight_style(Style::default().bg(Color::DarkGray));
+        }
+    };
 
     let area = Layout::default()
         .direction(Direction::Vertical)
@@ -86,7 +84,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         }
                     }
                     Down => {
-                        if *selected_index < app.friend_list_num {
+                        if *selected_index + 1 < app.friend_list_num {
                             *selected_index += 1;
                         }
                     }
@@ -96,6 +94,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
 
         Enter => {
+            if app.friend_list_num <= 0 {
+                return;
+            }
             let idx = if let FormState::FriendList { selected_index } = &app.state {
                 *selected_index
             } else {

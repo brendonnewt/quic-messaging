@@ -143,11 +143,13 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             }
             KeyCode::Char(' ') => {
-                let friend = &friends[*selected];
-                if chosen.contains(friend) {
-                    chosen.retain(|f| f != friend);
-                } else {
-                    chosen.push(friend.clone());
+                if friends.len() > 0 {
+                    let friend = &friends[*selected];
+                    if chosen.contains(friend) {
+                        chosen.retain(|f| f != friend);
+                    } else {
+                        chosen.push(friend.clone());
+                    }
                 }
             }
             KeyCode::Enter => {

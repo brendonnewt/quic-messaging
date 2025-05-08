@@ -166,6 +166,21 @@ pub async fn get_user_chats(
     Ok(chats)
 }
 
+pub async fn get_chat_user_ids(
+    chat_id: i32,
+    db: Arc<DatabaseConnection>,
+) -> Result<Vec<i32>, ServerError> {
+    let user_ids: Vec<i32> = entity::chat_members::Entity::find()
+        .filter(entity::chat_members::Column::ChatId.eq(chat_id))
+        .select_only()
+        .column(entity::chat_members::Column::UserId)
+        .into_tuple()
+        .all(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+    Ok(user_ids)
+}
+
 pub async fn get_other_usernames_in_chat(
     chat_id: i32,
     current_user_id: i32,

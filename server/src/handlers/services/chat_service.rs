@@ -237,3 +237,7 @@ pub async fn get_unread_count(user_id: i32, multiple_chats: bool, messages: Vec<
     }
     Ok(unread_count)
 }
+
+pub async fn get_chat_user_ids(chat_id: i32, db: Arc<DatabaseConnection>) -> Result<Vec<i32>, ServerError> {
+    chat_repository::get_chat_user_ids(chat_id, db.clone()).await
+}

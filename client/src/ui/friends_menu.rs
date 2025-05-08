@@ -61,46 +61,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             Enter | Char('\r') => {
                 match *selected_index {
                     0 => {
-                        let req = ClientRequest {
-                            jwt: Option::from(app.jwt.clone()),
-                            command: Command::GetFriendRequests {}
-                        };
-                        match app.send_request(&req).await {
-                            Ok(resp) => {
-                                if resp.success {
-                                    if let Some(data) = resp.data.clone() {
-                                        app.friend_requests = serde_json::from_value(resp.data.into())
-                                    }
-                                }else if let Some(message) = resp.message.clone() {
-                                    app.message = message;
-                                }
-                            },
-                            Err(e) => {
-                                app.message = e.to_string();
-                            }
-                        }
-                        app.set_friend_requests();
+                        app.set_friend_requests().await;
                     }
                     1 => {
-                        let req = ClientRequest{
-                            jwt: Option::from(app.jwt.clone()),
-                            command: Command::GetFriends {}
-                        };
-                        match app.send_request(&req).await {
-                            Ok(resp) => {
-                                if resp.success {
-                                    if let Some(data) = resp.data.clone() {
-                                        app.friend_list = serde_json::from_value(resp.data.into())
-                                    }
-                                }else if let Some(message) = resp.message.clone() {
-                                    app.message = message;
-                                }
-                            },
-                            Err(e) => {
-                                app.message = e.to_string();
-                            }
-                        }
-                        app.set_friend_list();
+                        app.set_friend_list().await;
                     }
                     _ => {}
                 }

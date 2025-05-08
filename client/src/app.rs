@@ -111,7 +111,7 @@ impl App {
             chats: Vec::new(),
         }
     }
-    
+
     pub async fn refresh(&mut self) {
         match &self.state {
             FormState::Chat { chat_id, chat_name, page, ..} => {
@@ -129,7 +129,7 @@ impl App {
             FormState::FriendRequests { .. } => {
                 self.set_friend_requests().await;
             }
-            _ => {
+            _ => { // These states don't need refreshing as they have no values that could be stale
             }
         }
     }

@@ -142,14 +142,18 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 app.message = "Passwords do not match!".to_string();
                 return;
             }
+            if username.trim().is_empty() || password.trim().is_empty() {
+                app.message = "Username and password cannot be empty!".to_string();
+                return;
+            }
             let req = ClientRequest {
                 jwt: None,
                 command: Command::Register {
-                    username: username.clone(),
-                    password: password.clone(),
+                    username: username.clone().trim().to_string(),
+                    password: password.clone().trim().to_string(),
                 },
             };
-            let username = username.clone();
+            let username = username.clone().trim().to_string();
             match app.send_request(&req).await {
                 Ok(response) => {
                     if response.success {

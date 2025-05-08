@@ -21,19 +21,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         )
         .split(f.size());
     
-    let fr_list = {
-        if app.friend_requests.incoming.is_empty() {
-            // Render an empty list
-            let empty = List::new(vec![ListItem::new("No requests")]).block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Friend Requests"),
-            );
-            return f.render_widget(empty, f.size());
-        } else {
-            &app.friend_requests
-        }
-    };
+    let fr_list = &app.friend_requests;
 
     let selected = if let FormState::FriendRequests { selected_index } = app.state {
         selected_index

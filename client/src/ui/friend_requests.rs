@@ -20,7 +20,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .collect::<Vec<_>>(),
         )
         .split(f.size());
-    
+
     let fr_list = &app.friend_requests;
 
     let selected = if let FormState::FriendRequests { selected_index } = app.state {
@@ -49,7 +49,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     app.set_friend_request_num(items.len());
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Friend Requests"))
+        .block(Block::default().borders(Borders::ALL).title("Friend Requests").title("Select a request to accept/deny"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()

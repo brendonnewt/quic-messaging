@@ -21,7 +21,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let main_menu_message = if app.logged_in {
         format!("Welcome, {}", app.username) // Display the stored username
     } else {
-        "Main Menu: Select an option".into() // Default message if not logged in
+        "Select an option".into() // Default message if not logged in
     };
 
     // Render the main menu greeting or instruction message

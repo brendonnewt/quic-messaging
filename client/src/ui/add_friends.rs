@@ -11,8 +11,6 @@ use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    // Debug: show when render runs and current state
-    //eprintln!("RENDER called; state={:?}", app.state);
 
     if let FormState::AddFriend { id, active_field } = &app.state {
         let chunks = Layout::default()

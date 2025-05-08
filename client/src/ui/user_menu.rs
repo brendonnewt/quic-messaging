@@ -41,7 +41,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     }).collect();
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Logged In"))
+        .block(Block::default().borders(Borders::ALL).title("User Menu"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     f.render_widget(list, main_chunks[0]);

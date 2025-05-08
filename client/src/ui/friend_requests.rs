@@ -20,10 +20,9 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .collect::<Vec<_>>(),
         )
         .split(f.size());
-
-    let fr_list = match &app.friend_requests {
-        Ok(list) => list,
-        Err(_) => {
+    
+    let fr_list = {
+        if app.friend_requests.incoming.is_empty() {
             // Render an empty list
             let empty = List::new(vec![ListItem::new("No requests")]).block(
                 Block::default()
@@ -31,6 +30,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                     .title("Friend Requests"),
             );
             return f.render_widget(empty, f.size());
+        } else {
+            &app.friend_requests
         }
     };
 

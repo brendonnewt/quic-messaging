@@ -58,7 +58,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 } else {
                     return;
                 };
-                let fr_req = &app.friend_requests.as_ref().unwrap().incoming[req_idx];
+                let fr_req = &app.friend_requests.incoming[req_idx];
                 let cmd = if opt == 0{
                     Command::AcceptFriendRequest {
                         sender_id: fr_req.id.clone(),
@@ -75,7 +75,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 match app.send_request(&req).await {
                     Ok(response) => {
                         if response.success{
-                            app.friend_requests.as_mut().unwrap().incoming.remove(req_idx);
+                            app.friend_requests.incoming.remove(req_idx);
                             if let Some(message) = response.message.clone(){
                                 app.message = message;
                             }
@@ -85,10 +85,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         app.message = err.to_string();
                     }
                 }
-                app.set_friend_requests();
+                app.set_friend_requests().await;
             }
             Esc => {
-                app.set_friend_requests();
+                app.set_friend_requests().await;
             }
             _ => {}
         }

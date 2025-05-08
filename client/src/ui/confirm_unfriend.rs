@@ -80,7 +80,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     }
                 }
             }
-
             app.set_friend_list().await;
         }
         Esc => {

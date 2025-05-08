@@ -159,6 +159,10 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 let user = user_controller::get_user_by_username(receiver_username.clone(), db.clone()).await;
                 match user {
                     Ok(user) => {
+                        let result = user_controller::add_friend(jwt.clone(), user.id, db.clone()).await;
+                        if result.is_ok() {
+                            notify_users(vec![user.id], logged_in.clone()).await;
+                        }
                         build_response(user_controller::add_friend(jwt.clone(), user.id, db.clone()).await, Some(jwt.clone()), "Friend Request Sent")
                     },
                     Err(e) => {
@@ -250,7 +254,12 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
 
         Command::CreateChat { member_ids, name, is_group } => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::create_chat(jwt, name, is_group, member_ids, db.clone()).await, None, "Chat Page Count")
+                let result = chat_controller::create_chat(jwt, name, is_group, member_ids.clone(), db.clone()).await;
+                if result.is_ok() {
+                    notify_users(member_ids, logged_in.clone()).await;
+                }
+                build_response(result, None, "Chat Page Count")
+
             } else {
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }

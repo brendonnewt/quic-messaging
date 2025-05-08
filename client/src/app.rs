@@ -84,7 +84,7 @@ pub struct App {
     pub user_id: i32,
     pub unread_count: u64,
     pub list_state: ListState,
-    pub friend_requests: Result<FriendRequestList, serde_json::Error>,
+    pub friend_requests: FriendRequestList,
     pub friend_request_num: usize,
     pub friend_list: UserList,
     pub friend_list_num: usize,
@@ -104,7 +104,7 @@ impl App {
             user_id: -1,
             unread_count: 0,
             list_state: ListState::default(),
-            friend_requests: (Result::Ok(FriendRequestList { incoming: vec![], outgoing: vec![] })),
+            friend_requests: FriendRequestList { incoming: vec![], outgoing: vec![] },
             friend_request_num: 0,
             friend_list: UserList { users: vec![] },
             friend_list_num: 0,
@@ -125,6 +125,9 @@ impl App {
             }
             FormState::FriendList { .. } => {
                 self.set_friend_list().await;
+            }
+            FormState::FriendRequests { .. } => {
+                self.set_friend_requests().await;
             }
             _ => {
             }
@@ -248,8 +251,34 @@ impl App {
         self.state = FormState::FriendMenu {selected_index: 0}
     }
 
-    pub fn set_friend_requests(&mut self) {
-        self.state = FormState::FriendRequests {selected_index: 0}
+    pub async fn set_friend_requests(&mut self) {
+        let req = ClientRequest {
+            jwt: Option::from(self.jwt.clone()),
+            command: Command::GetFriendRequests {}
+        };
+        match self.send_request(&req).await {
+            Ok(resp) => {
+                if resp.success {
+                    if let Some(data) = resp.data {
+                        match serde_json::from_value::<FriendRequestList>(data) {
+                            Ok(requests) => {
+                                self.friend_request_num = requests.incoming.len();
+                                self.friend_requests = requests;
+                                self.state = FormState::FriendRequests {selected_index: 0};
+                            },
+                            Err(err) => {
+                                self.message = format!("Parse error: {}", err);
+                            }
+                        }
+                    }
+                } else if let Some(message) = resp.message.clone() {
+                    self.message = message;
+                }
+            },
+            Err(e) => {
+                self.message = e.to_string();
+            }
+        }
     }
 
     pub fn set_confirm_friend_request(&mut self, req_index: usize) {
@@ -277,6 +306,7 @@ impl App {
                     if let Some(data) = resp.data {
                         match serde_json::from_value::<UserList>(data) {
                             Ok(friends) => {
+                                self.friend_list_num = friends.users.len();
                                 self.friend_list = friends;
                                 self.state = FormState::FriendList {selected_index: 0}
                             }

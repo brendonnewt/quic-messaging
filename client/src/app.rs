@@ -69,6 +69,10 @@ pub enum FormState {
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
+    ProfileView{
+        new_password: String,
+        active_field: ActiveField,
+    },
     ChatCreation(ChatCreationPhase),
     Exit,
 }

@@ -55,6 +55,22 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
+
+            let current_user: Arc<Mutex<Option<i32>>> = Arc::new(Mutex::new(None));
+
+            {
+                let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
+                let mut connection_clone = connection.clone();
+                tokio::spawn(async move {
+                    let _ = connection_clone.closed().await;
+                    if let Some(user_id) = *current_user.lock().await {
+                        logged_in.remove(&user_id);
+                        info!("Connection closed, logged out user {}", user_id);
+                    }
+                });
+            }
+
             let send_refresh = match connection.open_uni().await {
                 Ok(send) => send,
                 Err(err) => {
@@ -67,6 +83,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
                 let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
@@ -94,7 +111,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                         };
 
                         // Match command and forward message to the appropriate controller
-                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
+                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone, current_user.clone()).await;
 
                         let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
                         info!("List Of Logged In Users: {:?}", users);
@@ -114,13 +131,14 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>, refresh_stream: Arc<Mutex<SendStream>>) -> ServerResponse {
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>, refresh_stream: Arc<Mutex<SendStream>>, current_user: Arc<Mutex<Option<i32>>>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
             // User is automatically logged in upon registration
             if let Ok(auth) = &result {
                 logged_in.insert(auth.user_id, refresh_stream);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
@@ -131,6 +149,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             let result = auth_controller::login(username.clone(), password, db.clone()).await;
             if let Ok(auth) = &result {
                 logged_in.insert(auth.user_id, refresh_stream);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")

@@ -48,7 +48,6 @@ async fn main()  -> Result<(), Box<dyn Error>>{
             .try_into()
             .expect("valid idle timeout")),
     );
-    transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
 
     client_cfg.transport_config( Arc::new(transport_config) );
 

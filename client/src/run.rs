@@ -71,6 +71,9 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             FormState::ChatCreation(phase) => {
                 ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
+            FormState::ProfileView{..} => {
+                ui::profile::render::<CrosstermBackend<Stdout>>(f, app)
+            }
             FormState::Exit => return,
         })?;
 
@@ -134,6 +137,10 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
                 // User menu navigation (post-login)
                 FormState::UserMenu { .. } => {
                     ui::user_menu::handle_input(app, key).await;
+                }
+
+                FormState::ProfileView {..} => {
+                    ui::profile::handle_input(app,key).await;
                 }
 
                 // Any other state: do nothing

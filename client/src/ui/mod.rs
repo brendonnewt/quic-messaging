@@ -11,3 +11,4 @@ pub mod confirm_unfriend;
 pub mod chats;
 pub mod chat;
 pub mod create_chat;
+pub mod profile;

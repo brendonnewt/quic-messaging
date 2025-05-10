@@ -114,8 +114,9 @@ impl App {
 
     pub async fn refresh(&mut self) {
         match &self.state {
-            FormState::Chat { chat_id, chat_name, page, ..} => {
-                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE).await;
+            FormState::Chat { chat_id, chat_name, page, input_buffer,..} => {
+                let input_buffer = Some(input_buffer.clone());
+                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE, input_buffer).await;
             }
             FormState::Chats { .. } => {
                 self.enter_chats_view().await;
@@ -483,16 +484,17 @@ impl App {
         chat_name: String,
         page: u64,
         page_size: u64,
+        input_buffer: Option<String>,
     ) {
         // Get the number of pages in the chat
         let page_count = self.get_page_count(chat_id, page_size).await;
 
         if let Some(page_count) = page_count {
-            self.get_chat_messages(chat_id, chat_name, page_count, page, page_size).await;
+            self.get_chat_messages(chat_id, chat_name, page_count, page, page_size, input_buffer).await;
         }
     }
 
-    pub async fn get_chat_messages(&mut self, chat_id: i32, chat_name: String, page_count: u64, page: u64, page_size: u64) {
+    pub async fn get_chat_messages(&mut self, chat_id: i32, chat_name: String, page_count: u64, page: u64, page_size: u64, input_buffer: Option<String>) {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
             command: Command::GetChatMessages {
@@ -514,7 +516,7 @@ impl App {
                                     page_count,
                                     messages: messages.messages,
                                     page: 0,
-                                    input_buffer: "".to_string(),
+                                    input_buffer: input_buffer.unwrap_or("".to_string()),
                                 };
                                 self.message = "".into();
                             }

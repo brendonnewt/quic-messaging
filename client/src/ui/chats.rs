@@ -66,7 +66,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') =>  {
                 if let Some(chat) = app.chats.get(*selected_index) {
-                    app.enter_chat_view(chat.id, chat.chat_name.clone(), 0, PAGE_SIZE).await;
+                    app.enter_chat_view(chat.id, chat.chat_name.clone(), 0, PAGE_SIZE, None).await;
                 }
             },
             KeyCode::Tab => {

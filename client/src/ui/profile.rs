@@ -93,7 +93,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
         Esc => {
 
-            app.set_main_menu();
+            app.set_user_menu().await;
             app.message = "Returning to main menu...".into();
         }
         _ => {

@@ -4,10 +4,11 @@ use sea_orm::sea_query::Expr;
 use crate::{entity, utils};
 use utils::errors::server_error::ServerError;
 use crate::entity::sea_orm_active_enums::Status;
+use crate::entity::users;
 
 pub async fn register_user(username: String, hashed: String, db: Arc<DatabaseConnection>) -> Result<entity::users::ActiveModel, ServerError> {
     // Create a new user
-    let new_user = entity::users::ActiveModel {
+    let new_user = entity::users::ActiveModel { 
         id: NotSet,
         username: Set(username),
         password_hash: Set(hashed.clone()),
@@ -204,4 +205,35 @@ pub async fn get_user_friend_requests(user_id: i32, direction: Option<entity::fr
     let requests = incoming.into_iter().chain(outgoing.into_iter()).collect();
 
     Ok(requests)
+}
+
+pub async fn update_password(
+    username: String,
+    hashed_password: String,
+    db: Arc<DatabaseConnection>,
+) -> Result<(), ServerError> {
+
+
+    // Find the user
+    let user = users::Entity::find()
+        .filter(users::Column::Username.eq(username.clone()))
+        .one(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    let Some(user) = user else {
+        return Err(ServerError::UserNotFound);
+    };
+
+    // Update password hash
+    let mut active: users::ActiveModel = user.into();
+    active.password_hash = Set(hashed_password);
+
+    // Save to DB
+    active
+        .save(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    Ok(())
 }

@@ -68,6 +68,10 @@ pub enum FormState {
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
+    ProfileView{
+        new_password: String,
+        active_field: ActiveField,
+    },
     ChatCreation(ChatCreationPhase),
     Exit,
 }
@@ -404,6 +408,14 @@ impl App {
     pub fn set_user_menu_selected_index(&mut self, selected_index: usize) {
         if let FormState::UserMenu { selected_index: s } = &mut self.state {
             *s = selected_index;
+        }
+    }
+
+    pub fn set_profile_view(&mut self) {
+        self.state = FormState::ProfileView {
+            new_password: String::new(),
+
+            active_field: ActiveField::Password,
         }
     }
 

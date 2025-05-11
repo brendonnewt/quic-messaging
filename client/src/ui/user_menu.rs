@@ -11,7 +11,7 @@ use ratatui::{
 };
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Add Friends", "Friend List", "Settings", "Log Out"];
+    let options = ["Chats", "Add Friends", "Friend List", "Edit Password", "Log Out"];
 
     // Split the screen into menu area and message area
     let main_chunks = Layout::default()
@@ -82,12 +82,13 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 2 => {
                     app.message.clear();
                     app.set_friend_menu();
-                }
-                // 4 => app.state = FormState::Settings,
+                },
+                3 => { app.set_profile_view()},
+
                 4 => {
                     app.message.clear();
                     app.logout().await
-                } // Log Out
+                }, // Log Out
                 _ => {}
             },
             KeyCode::Up => {

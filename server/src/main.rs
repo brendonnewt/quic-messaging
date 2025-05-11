@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_arc = Arc::new(db);
 
     let addr: SocketAddr = "0.0.0.0:8080".parse()?;
-    let mut endpoint = Endpoint::server(utils::cert::generate_self_signed_cert(), addr)?;
+    let endpoint = Endpoint::server(utils::cert::generate_self_signed_cert(), addr)?;
 
     info!("Server listening on {}", addr);
 

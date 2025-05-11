@@ -427,6 +427,14 @@ impl App {
         }
     }
 
+    pub fn set_profile_view(&mut self) {
+        self.state = FormState::ProfileView {
+            new_password: String::new(),
+
+            active_field: ActiveField::Password,
+        }
+    }
+
     pub async fn logout(&mut self) -> (){
         let req = ClientRequest {
             jwt: Option::from(self.jwt.clone()),

@@ -12,3 +12,4 @@ pub mod chats;
 pub mod chat;
 pub mod create_chat;
 pub mod profile;
+pub mod close;

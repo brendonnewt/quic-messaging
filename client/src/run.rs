@@ -13,6 +13,7 @@ use std::io::{self, Stdout};
 use std::sync::Arc;
 use std::time::Duration;
 use quinn::RecvStream;
+use serde_json::ser::State;
 use tokio::io::AsyncRead;
 use tokio::time::timeout;
 use tracing::{error, info};
@@ -34,6 +35,7 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             }
             Err(spmc::TryRecvError::Disconnected) => {
                 // Something has gone wrong, close the program
+                app.state = FormState::Close();
             }
         }
         // 1) Draw the appropriate UI for the current state
@@ -73,6 +75,9 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             }
             FormState::ProfileView{..} => {
                 ui::profile::render::<CrosstermBackend<Stdout>>(f, app)
+            }
+            FormState::Close() => {
+                ui::close::render::<CrosstermBackend<Stdout>>(f, app)
             }
             FormState::Exit => return,
         })?;
@@ -141,6 +146,10 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
 
                 FormState::ProfileView {..} => {
                     ui::profile::handle_input(app,key).await;
+                }
+
+                FormState::Close() => {
+                    ui::close::handle_input(app, key).await;
                 }
 
                 // Any other state: do nothing

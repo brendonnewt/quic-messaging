@@ -44,7 +44,7 @@ async fn main()  -> Result<(), Box<dyn Error>>{
 
     let mut transport_config = TransportConfig::default();
     transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300)
+        Some(Duration::from_secs(300) //300 sec = 5 minutes
             .try_into()
             .expect("valid idle timeout")),
     );

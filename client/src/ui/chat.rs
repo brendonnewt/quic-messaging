@@ -9,6 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use ratatui::layout::Position;
 use shared::client_response::Command::{GetChatMessages, SendMessage};
 use shared::client_response::{ClientRequest, Command};
 use shared::models::chat_models::{ChatMessages, Count};
@@ -27,7 +28,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
             Constraint::Length(3), // New message input
             Constraint::Length(3), // Message area
         ])
-        .split(f.size());
+        .split(f.area());
 
     if let FormState::Chat {
         chat_name,
@@ -101,7 +102,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         // Set cursor just before the right border
         let cursor_x = chunks[3].x + 1 + cursor_offset as u16;
         let cursor_y = chunks[3].y + 1;
-        f.set_cursor(cursor_x, cursor_y);
+        f.set_cursor_position(Position::from((cursor_x, cursor_y)));
 
         f.render_widget(new_chat, chunks[3]);
 

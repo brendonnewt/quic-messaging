@@ -19,7 +19,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .chain([Constraint::Min(0)])
                 .collect::<Vec<_>>(),
         )
-        .split(f.size());
+        .split(f.area());
 
     let fr_list = &app.friend_list;
 
@@ -74,7 +74,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
     f.render_widget(list, area);
 }

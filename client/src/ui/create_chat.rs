@@ -27,7 +27,7 @@ pub enum ChatCreationPhase {
 
 // Render function for the chat creation UI
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
-    let size = f.size();
+    let size = f.area();
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)

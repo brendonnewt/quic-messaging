@@ -19,7 +19,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
                 .chain([Constraint::Min(0)])
                 .collect::<Vec<_>>(),
         )
-        .split(f.size());
+        .split(f.area());
 
     let selected = if let FormState::FriendMenu { selected_index } = app.state {
         selected_index
@@ -50,7 +50,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
     f.render_widget(list, area);
 }

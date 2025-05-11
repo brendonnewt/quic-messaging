@@ -21,7 +21,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
             Constraint::Length(3), // Add Chat
             Constraint::Length(3), // Message
         ])
-        .split(f.size());
+        .split(f.area());
 
     let selected = if let FormState::Chats { selected_index } = app.state {
         selected_index

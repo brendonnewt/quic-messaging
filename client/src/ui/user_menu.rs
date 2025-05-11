@@ -21,7 +21,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
             Constraint::Min(10),   // Menu list area
             Constraint::Length(3), // Message display
         ])
-        .split(f.size());
+        .split(f.area());
 
     // Further split the top part for list items
     let selected = if let FormState::UserMenu { selected_index } = app.state {

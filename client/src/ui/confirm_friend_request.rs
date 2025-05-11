@@ -16,7 +16,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
     let opt_i = if let FormState::ConfirmFriendRequest {
         selected_option, ..

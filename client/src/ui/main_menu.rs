@@ -13,7 +13,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Length(3), Constraint::Min(0)])
-        .split(f.size());
+        .split(f.area());
 
     // Display personalized message if logged in
     let main_menu_message = if app.logged_in {

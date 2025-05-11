@@ -22,7 +22,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
             Constraint::Length(3),
             Constraint::Min(0),
         ])
-        .split(f.size());
+        .split(f.area());
 
     // Retrieve the active field using the get_active_field method
     let active_field = app.get_active_field();

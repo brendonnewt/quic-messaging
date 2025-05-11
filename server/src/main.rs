@@ -136,6 +136,15 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, jwt, "Logged in")
         }
 
+        Command::UpdateProfile { new_password } => {
+            if let Some(jwt) = req.jwt {
+                let result = auth_controller::update_password(jwt.clone(), new_password, db.clone()).await;
+                build_response(result, Some(jwt), "Password Updated")
+            } else {
+                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".into())), None, "")
+            }
+        }
+
         Command::Logout {username} => {
             let result: Result<_, ServerError> = Ok(ServerResponseModel{success: true});
             let user = user_controller::get_user_by_username(username.clone(), db.clone()).await;

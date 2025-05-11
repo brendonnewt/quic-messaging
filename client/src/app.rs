@@ -74,7 +74,7 @@ pub enum FormState {
         active_field: ActiveField,
     },
     ChatCreation(ChatCreationPhase),
-    Close(),
+    Close,
     Exit,
 }
 
@@ -246,7 +246,7 @@ impl App {
     }
 
     pub fn set_close(&mut self) {
-        self.state = FormState::Close();
+        self.state = FormState::Close;
     }
 
     pub fn set_add_friend(&mut self) {

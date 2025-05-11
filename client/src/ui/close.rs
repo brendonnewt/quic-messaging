@@ -42,11 +42,13 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     f.render_widget(list, area);
 }
 
-pub async fn handle_input(app: &mut App, key: KeyEvent) {
+pub async fn handle_input(app: &mut App, key: KeyEvent) -> bool{
     match key.code {
         Enter => {
-            std::process::exit(0);
+            app.set_exit();
+            return true;
         }
         _ => {}
     }
+    false
 }

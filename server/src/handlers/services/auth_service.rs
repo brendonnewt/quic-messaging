@@ -4,7 +4,9 @@ use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use utils::errors::server_error::ServerError;
 use shared::models::auth_models::AuthResponseModel;
+use shared::models::server_models::ServerResponseModel;
 use utils::jwt;
+use crate::handlers::services::user_service::get_info;
 
 pub async fn register(
     username: String,
@@ -64,5 +66,28 @@ pub async fn login(
         };
     }
 
+    Err(ServerError::UserNotFound)
+}
+
+pub async fn update_password(jwt: String, new_password: String, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+    let trimmed = new_password.trim();
+    if trimmed.is_empty() {
+        return Err(ServerError::RequestInvalid("Password cannot be empty.".into()));
+    }
+
+    // Hash the new password
+    let hashed = utils::security::hash_password(&new_password)?;
+
+    // Ensure the user exists
+    if let user = get_info(jwt, db.clone()).await? {
+        // Call the repository to update the password in the database
+        let username = user.username; // Assuming you have `username` in the user object
+        user_repository::update_password(username, hashed, db.clone()).await?;
+
+        // Return a success response
+        return Ok(ServerResponseModel { success: true });
+    }
+
+    // If user doesn't exist
     Err(ServerError::UserNotFound)
 }

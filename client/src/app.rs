@@ -382,33 +382,6 @@ impl App {
         self.state = FormState::UserMenu { selected_index: 0 };
     }
 
-    // Setters for LoginForm and RegisterForm fields
-    pub fn set_username(&mut self, username: String) {
-        match &mut self.state {
-            FormState::LoginForm { username: u, .. } => *u = username,
-            FormState::RegisterForm { username: u, .. } => *u = username,
-            _ => {}
-        }
-    }
-
-    pub fn set_password(&mut self, password: String) {
-        match &mut self.state {
-            FormState::LoginForm { password: p, .. } => *p = password,
-            FormState::RegisterForm { password: p, .. } => *p = password,
-            _ => {}
-        }
-    }
-
-    pub fn set_confirm_password(&mut self, confirm_password: String) {
-        if let FormState::RegisterForm {
-            confirm_password: c,
-            ..
-        } = &mut self.state
-        {
-            *c = confirm_password;
-        }
-    }
-
     pub fn set_friend_request_num(&mut self, friend_request_num: usize) {
         self.friend_request_num = friend_request_num;
     }
@@ -587,44 +560,5 @@ impl App {
             }
         }
         None
-    }
-}
-
-impl FormState {
-    // Getter for username (for RegisterForm and LoginForm)
-    pub fn get_username(&self) -> Option<String> {
-        match self {
-            FormState::RegisterForm { username, .. } => Some(username.clone()),
-            FormState::LoginForm { username, .. } => Some(username.clone()),
-            _ => None,
-        }
-    }
-
-    // Getter for password (for RegisterForm and LoginForm)
-    pub fn get_password(&self) -> Option<String> {
-        match self {
-            FormState::RegisterForm { password, .. } => Some(password.clone()),
-            FormState::LoginForm { password, .. } => Some(password.clone()),
-            _ => None,
-        }
-    }
-
-    // Getter for confirm_password (for RegisterForm)
-    pub fn get_confirm_password(&self) -> Option<String> {
-        match self {
-            FormState::RegisterForm {
-                confirm_password, ..
-            } => Some(confirm_password.clone()),
-            _ => None,
-        }
-    }
-
-    // Getter for active_field (for both LoginForm and RegisterForm)
-    pub fn get_active_field(&self) -> Option<ActiveField> {
-        match self {
-            FormState::LoginForm { active_field, .. } => Some(*active_field),
-            FormState::RegisterForm { active_field, .. } => Some(*active_field),
-            _ => None,
-        }
     }
 }

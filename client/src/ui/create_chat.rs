@@ -4,7 +4,7 @@ use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Text},
+    text::{Text},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };

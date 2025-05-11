@@ -1,7 +1,6 @@
 use dotenv::dotenv;
 use lazy_static::lazy_static;
 use std::env;
-use std::error::Error;
 
 lazy_static! {
     pub static ref SERVER_ADDR: String = set_serv_addr().expect("Failed to get SERVER_ADDR");

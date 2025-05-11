@@ -6,12 +6,12 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::Text,
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use shared::client_response::Command::{GetChatMessages, SendMessage};
 use shared::client_response::{ClientRequest, Command};
-use shared::models::chat_models::{ChatList, ChatMessage, ChatMessages, Count};
+use shared::models::chat_models::{ChatMessages, Count};
 use unicode_width::UnicodeWidthStr;
 
 const PAGE_SIZE: u64 = 10;

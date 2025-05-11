@@ -9,12 +9,9 @@ use ratatui::{
 };
 use shared::client_response::{ClientRequest, Command};
 use shared::models::auth_models::AuthResponseModel;
-use shared::models::chat_models::ChatList;
 use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    // Debug: show when render runs and current state
-    //eprintln!("RENDER called; state={:?}", app.state);
 
     if let FormState::LoginForm { username, password, active_field } = &app.state {
         let chunks = Layout::default()

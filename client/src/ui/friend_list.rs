@@ -1,5 +1,5 @@
-use crate::app::{ActiveField, App, FormState};
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::app::{App, FormState};
+use crossterm::event::{KeyEvent};
 use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
 use ratatui::{
     backend::Backend,
@@ -8,7 +8,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     Layout::default()
@@ -72,7 +71,6 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    use KeyCode::*;
 
     match key.code {
         Up | Down => {

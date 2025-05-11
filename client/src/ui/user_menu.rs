@@ -8,8 +8,7 @@ use ratatui::{
     Frame,
 };
 use ratatui::widgets::Paragraph;
-use shared::client_response::{ClientRequest, Command};
-use crate::app::{ActiveField, App, FormState};
+use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Chats", "Add Friends", "Friend List", "Settings", "Log Out"];

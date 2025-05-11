@@ -4,20 +4,16 @@ mod event;
 mod run;
 mod utils;
 
-use crate::app::{App, FormState};
+use crate::app::{App};
 use run::run_app;
 
-use futures::StreamExt;
 use quinn::{ClientConfig, Endpoint, RecvStream, TransportConfig};
 use rustls::client::{ClientConfig as RustlsClientConfig, ServerCertVerified, ServerCertVerifier};
 use std::error::Error;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time::timeout;
-use tracing_subscriber::prelude::*;
-use shared::models::chat_models::ChatList;
 use shared::server_response::Refresh;
 
 struct TestVerifier;

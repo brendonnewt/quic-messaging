@@ -1,7 +1,6 @@
 use crate::ui::create_chat::ChatCreationPhase;
-use quinn::{Connection, RecvStream};
+use quinn::{Connection};
 use ratatui::widgets::ListState;
-use rustls::Error;
 use tracing::error;
 use shared::client_response::Command::{CreateChat, GetFriends};
 use shared::client_response::{ClientRequest, Command};

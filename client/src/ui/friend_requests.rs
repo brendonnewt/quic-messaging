@@ -1,4 +1,4 @@
-use crate::app::{ActiveField, App, FormState};
+use crate::app::{App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -7,7 +7,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     Layout::default()

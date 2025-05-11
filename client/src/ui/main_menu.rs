@@ -1,4 +1,3 @@
-use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -7,8 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::{App, FormState};
-use ratatui::widgets::ListState;
+use crate::app::{App};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()

@@ -31,11 +31,11 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
     if let FormState::Chat {
         chat_name,
-        chat_id,
         page,
         page_count,
         messages,
         input_buffer,
+        ..
     } = &mut app.state
     {
         let lines: Vec<Line> = messages
@@ -217,13 +217,12 @@ pub async fn handle_up(app: &mut App) {
 }
 
 pub async fn handle_down(app: &mut App) {
-    let (page, page_count, chat_id) = match &mut app.state {
+    let (page, chat_id) = match &mut app.state {
         FormState::Chat {
             page,
-            page_count,
             chat_id,
             ..
-        } => (page, page_count, chat_id),
+        } => (page, chat_id),
         _ => return,
     };
     if *page <= 0 {

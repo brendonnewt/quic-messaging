@@ -60,7 +60,7 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             FormState::Chat { .. } => {
                 ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::ChatCreation(phase) => {
+            FormState::ChatCreation(_) => {
                 ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
             FormState::Exit => return,

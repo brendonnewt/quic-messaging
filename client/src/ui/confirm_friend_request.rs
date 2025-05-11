@@ -18,10 +18,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(0)])
         .split(f.size())[0];
 
-    let (req_i, opt_i) = if let FormState::ConfirmFriendRequest { selected_index, selected_option } = app.state {
-        (selected_index, selected_option)
+    let opt_i = if let FormState::ConfirmFriendRequest { selected_option, .. } = app.state {
+        selected_option
     } else {
-        (0, 0)
+        0
     };
 
     let title = "Accept or Decline Friend Request?".to_string();

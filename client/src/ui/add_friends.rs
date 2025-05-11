@@ -7,6 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use KeyCode::*;
 use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, ActiveField, FormState};
 
@@ -29,7 +30,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
             Style::default()
         };
 
-        // Id box
+        // ID box
         let id_para = Paragraph::new(Text::from(id.clone()))
             .block(Block::default().borders(Borders::ALL).title("Friend Username"))
             .style(id_style);
@@ -37,18 +38,16 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
         // Message box
         let msg_para = Paragraph::new(app.message.clone())
-            .block(Block::default().title("")) // no borders for message
+            .block(Block::default().title("")) // no borders for a message
             .style(Style::default());
         f.render_widget(msg_para, chunks[2]);
     }
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    use KeyCode::*;
-
     // Pattern match early, then borrow rest of app freely
-    let (id, active_field) = match &mut app.state {
-        FormState::AddFriend { id, active_field } => (id, active_field),
+    let id= match &mut app.state {
+        FormState::AddFriend { id, .. } => id,
         _ => return,
     };
 

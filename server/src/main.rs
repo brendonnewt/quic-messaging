@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Server listening on {}", addr);
 
     // List of Logged_In Users
-    let logged_in = Arc::new(DashMap::<i32, Arc<Mutex<SendStream>>>::new());
+    let logged_in = Arc::new(DashMap::<i32, Vec<Arc<Mutex<SendStream>>>>::new());
 
     while let Some(conn) = endpoint.accept().await {
         tokio::spawn(handle_connection(conn, db_arc.clone(), logged_in.clone()));
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>) {
+async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
@@ -112,13 +112,13 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>, refresh_stream: Arc<Mutex<SendStream>>) -> ServerResponse {
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>, refresh_stream: Arc<Mutex<SendStream>>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
             // User is automatically logged in upon registration
             if let Ok(auth) = &result {
-                logged_in.insert(auth.user_id, refresh_stream);
+                logged_in.insert(auth.user_id, vec![refresh_stream]);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
@@ -128,7 +128,13 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         Command::Login { username, password } => {
             let result = auth_controller::login(username.clone(), password, db.clone()).await;
             if let Ok(auth) = &result {
-                logged_in.insert(auth.user_id, refresh_stream);
+                let vec = logged_in.get_mut(&auth.user_id);
+                if let Some(mut vec) = vec {
+                    vec.push(refresh_stream);
+                } else {
+                    logged_in.insert(auth.user_id, vec![refresh_stream]);
+                }
+                info!("User {} logged in", username);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
@@ -148,10 +154,19 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             let user = user_controller::get_user_by_username(username.clone(), db.clone()).await;
             match user {
                 Ok(user) => {
-                    if logged_in.remove(&user.id).is_some() {
-                        info!("User {} logged out", username);
-                    } else {
-                        warn!("Logout: user {} was not marked as logged in", username);
+                    // Find the stream corresponding to the current session
+                    let current_id = {
+                        refresh_stream.lock().await.id()
+                    };
+                    
+                    if let Some(mut vec) = logged_in.get_mut(&user.id) {
+                        for (i, entry) in vec.clone().iter().enumerate() {
+                            let stream = entry.lock().await;
+                            if stream.id().eq(&current_id) {
+                                vec.remove(i);
+                                break;
+                            }
+                        }
                     }
                     build_response(result, req.jwt, "Logged out")
                 }
@@ -406,22 +421,24 @@ async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, 
     }
 }
 
-async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>) {
+async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     for user_id in user_ids {
-        if let Some(stream_ref) = stream_map.get_mut(&user_id) {
-            let mut stream_lock = stream_ref.lock().await;
-            println!("Notifying user {} in stream map", user_id);
-            let bytes = serde_json::to_vec(&shared::server_response::Refresh).expect("Failed to serialize refresh ping");
-            let len = (bytes.len() as u32).to_be_bytes();
-            if let Err(e) = stream_lock.write_all(&len).await {
-                eprintln!("Failed to notify user {}: {}", user_id, e);
-                stream_map.remove(&user_id);
-                continue;
-            }
-            if let Err(e) = stream_lock.write_all(&bytes).await {
-                eprintln!("Failed to notify user {}: {}", user_id, e);
-                stream_map.remove(&user_id);
-                continue;
+        if let Some(stream_vec) = stream_map.get_mut(&user_id) {
+            for stream in stream_vec.iter() {
+                let mut stream_lock = stream.lock().await;
+                println!("Notifying user {} in stream map", user_id);
+                let bytes = serde_json::to_vec(&shared::server_response::Refresh).expect("Failed to serialize refresh ping");
+                let len = (bytes.len() as u32).to_be_bytes();
+                if let Err(e) = stream_lock.write_all(&len).await {
+                    eprintln!("Failed to notify user {}: {}", user_id, e);
+                    stream_map.remove(&user_id);
+                    continue;
+                }
+                if let Err(e) = stream_lock.write_all(&bytes).await {
+                    eprintln!("Failed to notify user {}: {}", user_id, e);
+                    stream_map.remove(&user_id);
+                    continue;
+                }
             }
         }
     }

@@ -1,3 +1,4 @@
+use crate::app::{App, FormState};
 use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -8,7 +9,6 @@ use ratatui::{
     Frame,
 };
 use shared::client_response::{ClientRequest, Command};
-use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     let options = ["Unfriend", "Go Back"];
@@ -18,7 +18,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(0)])
         .split(f.size())[0];
 
-    let opt_i = if let FormState::ConfirmUnfriend { selected_option, .. } = app.state {
+    let opt_i = if let FormState::ConfirmUnfriend {
+        selected_option, ..
+    } = app.state
+    {
         selected_option
     } else {
         0
@@ -26,14 +29,20 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 
     let title = "Are you sure?".to_string();
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &label)| {
-        let style = if i == opt_i {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-        };
-        ListItem::new(label).style(style)
-    }).collect();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(i, &label)| {
+            let style = if i == opt_i {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(label).style(style)
+        })
+        .collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(title))
@@ -45,7 +54,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
         Up | Down => {
-            if let FormState::ConfirmUnfriend { selected_option, .. } = &mut app.state {
+            if let FormState::ConfirmUnfriend {
+                selected_option, ..
+            } = &mut app.state
+            {
                 *selected_option = (*selected_option + 1) % 2;
             }
         }
@@ -53,28 +65,29 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             let (req_idx, opt) = if let FormState::ConfirmUnfriend {
                 selected_index,
                 selected_option,
-            } = &app.state {
+            } = &app.state
+            {
                 (*selected_index, *selected_option)
             } else {
                 return;
             };
             let fr_req = &app.friend_list.users[req_idx];
-            if opt == 0{
+            if opt == 0 {
                 let cmd = {
                     Command::RemoveFriend {
                         friend_id: fr_req.id,
                     }
                 };
-                let req = ClientRequest{
+                let req = ClientRequest {
                     jwt: Option::from(app.jwt.clone()),
                     command: cmd,
                 };
                 match app.send_request(&req).await {
                     Ok(response) => {
-                        if response.success{
+                        if response.success {
                             app.friend_list.users.remove(req_idx);
                         }
-                    },
+                    }
                     Err(err) => {
                         app.message = err.to_string();
                     }

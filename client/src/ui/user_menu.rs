@@ -1,5 +1,7 @@
+use crate::app::{App, FormState};
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
+use ratatui::widgets::Paragraph;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -7,8 +9,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use ratatui::widgets::Paragraph;
-use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Chats", "Add Friends", "Friend List", "Settings", "Log Out"];
@@ -18,7 +18,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([
-            Constraint::Min(10),  // Menu list area
+            Constraint::Min(10),   // Menu list area
             Constraint::Length(3), // Message display
         ])
         .split(f.size());
@@ -30,14 +30,20 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         0
     };
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
-        let style = if i == selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-        };
-        ListItem::new(opt).style(style)
-    }).collect();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(i, &opt)| {
+            let style = if i == selected {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(opt).style(style)
+        })
+        .collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("User Menu"))
@@ -48,7 +54,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let combined_message = if app.message.is_empty() {
         format!("You have {} unread messages", app.unread_count)
     } else {
-        format!("{} | You have {} unread messages", app.message, app.unread_count)
+        format!(
+            "{} | You have {} unread messages",
+            app.message, app.unread_count
+        )
     };
 
     // Render app message
@@ -65,20 +74,20 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 0 => {
                     app.message.clear();
                     app.enter_chats_view().await
-                }, // index 0 = Chats
+                } // index 0 = Chats
                 1 => {
                     app.message.clear();
                     app.set_add_friend()
-                },
+                }
                 2 => {
                     app.message.clear();
                     app.set_friend_menu();
-                },
+                }
                 // 4 => app.state = FormState::Settings,
                 4 => {
                     app.message.clear();
                     app.logout().await
-                }, // Log Out
+                } // Log Out
                 _ => {}
             },
             KeyCode::Up => {
@@ -95,4 +104,3 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
     }
 }
-

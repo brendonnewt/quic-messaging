@@ -1,4 +1,5 @@
-use crossterm::event::{KeyEvent, KeyCode};
+use crate::app::{App, FormState};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -6,28 +7,40 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Friend Requests", "Current Friends"];
     Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
-        .constraints(vec![Constraint::Length(3); 6].into_iter().chain([Constraint::Min(0)]).collect::<Vec<_>>())
+        .constraints(
+            vec![Constraint::Length(3); 6]
+                .into_iter()
+                .chain([Constraint::Min(0)])
+                .collect::<Vec<_>>(),
+        )
         .split(f.size());
 
     let selected = if let FormState::FriendMenu { selected_index } = app.state {
         selected_index
-    } else { 0 };
+    } else {
+        0
+    };
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
-        let style = if i == selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-        };
-        ListItem::new(opt).style(style)
-    }).collect();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(i, &opt)| {
+            let style = if i == selected {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(opt).style(style)
+        })
+        .collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("Friends"))
@@ -57,23 +70,20 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     *selected_index += 1;
                 }
             }
-            Enter | Char('\r') => {
-                match *selected_index {
-                    0 => {
-                        app.set_friend_requests().await;
-                    }
-                    1 => {
-                        app.set_friend_list().await;
-                    }
-                    _ => {}
+            Enter | Char('\r') => match *selected_index {
+                0 => {
+                    app.set_friend_requests().await;
                 }
-            }
+                1 => {
+                    app.set_friend_list().await;
+                }
+                _ => {}
+            },
             Esc => {
                 app.message.clear();
                 app.set_user_menu().await;
             }
             _ => {}
         }
-
     }
 }

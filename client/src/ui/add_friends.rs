@@ -1,3 +1,4 @@
+use crate::app::{ActiveField, App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -7,12 +8,10 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use KeyCode::*;
 use shared::client_response::{ClientRequest, Command};
-use crate::app::{App, ActiveField, FormState};
+use KeyCode::*;
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-
     if let FormState::AddFriend { id, active_field } = &app.state {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -32,7 +31,11 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
         // ID box
         let id_para = Paragraph::new(Text::from(id.clone()))
-            .block(Block::default().borders(Borders::ALL).title("Friend Username"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Friend Username"),
+            )
             .style(id_style);
         f.render_widget(id_para, chunks[0]);
 
@@ -46,7 +49,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     // Pattern match early, then borrow rest of app freely
-    let id= match &mut app.state {
+    let id = match &mut app.state {
         FormState::AddFriend { id, .. } => id,
         _ => return,
     };
@@ -57,9 +60,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         Backspace => {
             id.pop();
         }
-        Char(c) => {
-            id.push(c)
-        }
+        Char(c) => id.push(c),
         Enter => {
             if id.clone().trim().is_empty() {
                 return;
@@ -78,7 +79,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
                     }
-                },
+                }
                 Err(err) => {
                     app.message = err.to_string();
                 }

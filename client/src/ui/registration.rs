@@ -177,7 +177,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
                     }
-                },
+                }
                 Err(err) => {
                     app.message = err.to_string();
                 }

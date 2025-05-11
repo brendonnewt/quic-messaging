@@ -1,12 +1,12 @@
+use crate::app::App;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
-    layout::{Layout, Constraint, Direction},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::{App};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -36,7 +36,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         "Friend List",
         "Settings",
         "Log Out",
-        "Close"
+        "Close",
     ];
 
     // Pre-login options
@@ -55,7 +55,9 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .enumerate()
         .map(|(i, opt)| {
             let style = if i == app.selected_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };

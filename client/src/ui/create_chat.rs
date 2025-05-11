@@ -4,7 +4,7 @@ use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Text},
+    text::Text,
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
@@ -185,7 +185,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 if !name.is_empty() {
                     if name.len() > 20 {
                         app.message = "Group name cannot be longer than 20 characters.".into();
-                        return;   
+                        return;
                     }
                     chosen.push(User {
                         id: app.user_id,

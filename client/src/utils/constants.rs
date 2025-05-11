@@ -9,9 +9,7 @@ lazy_static! {
 fn set_serv_addr() -> Result<String, env::VarError> {
     dotenv().ok();
     match env::var("SERVER_ADDR") {
-        Ok(url) => {
-            Ok(url)
-        }
+        Ok(url) => Ok(url),
         Err(e) => {
             println!("Failed to get SERVER_ADDR: {}", e); // Log the error
             Err(e)

@@ -1,3 +1,4 @@
+use crate::app::{ActiveField, App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -9,11 +10,14 @@ use ratatui::{
 };
 use shared::client_response::{ClientRequest, Command};
 use shared::models::auth_models::AuthResponseModel;
-use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-
-    if let FormState::LoginForm { username, password, active_field } = &app.state {
+    if let FormState::LoginForm {
+        username,
+        password,
+        active_field,
+    } = &app.state
+    {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(4)
@@ -61,7 +65,11 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
     // Pattern match early, then borrow rest of app freely
     let (username, password, active_field) = match &mut app.state {
-        FormState::LoginForm { username, password, active_field } => (username, password, active_field),
+        FormState::LoginForm {
+            username,
+            password,
+            active_field,
+        } => (username, password, active_field),
         _ => return,
     };
 
@@ -125,7 +133,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
                     }
-                },
+                }
                 Err(err) => {
                     app.message = err.to_string();
                 }

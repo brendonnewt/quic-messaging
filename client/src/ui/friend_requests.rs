@@ -48,7 +48,12 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     app.set_friend_request_num(items.len());
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Friend Requests").title("Select a request to accept/deny"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Friend Requests")
+                .title("Select a request to accept/deny"),
+        )
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()
@@ -97,7 +102,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         Esc => {
             app.message.clear();
             app.set_friend_menu()
-        },
+        }
 
         _ => {}
     }

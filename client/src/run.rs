@@ -9,7 +9,10 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, Stdout};
 
-pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(
+    app: &mut App,
+    rx: spmc::Receiver<u8>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -54,12 +57,8 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             FormState::ConfirmUnfriend { .. } => {
                 ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::Chats { .. } => {
-                ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
-            }
-            FormState::Chat { .. } => {
-                ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
-            }
+            FormState::Chats { .. } => ui::chats::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::Chat { .. } => ui::chat::render::<CrosstermBackend<Stdout>>(f, app),
             FormState::ChatCreation(_) => {
                 ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
@@ -110,15 +109,15 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
                 FormState::MainMenu => {
                     ui::main_menu::handle_input(app, key).await;
                 }
-                
+
                 FormState::Chats { .. } => {
                     ui::chats::handle_input(app, key).await;
                 }
-                
+
                 FormState::Chat { .. } => {
                     ui::chat::handle_input(app, key).await;
-                },
-                
+                }
+
                 FormState::ChatCreation(..) => {
                     ui::create_chat::handle_input(app, key).await;
                 }

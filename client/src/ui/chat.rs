@@ -218,11 +218,7 @@ pub async fn handle_up(app: &mut App) {
 
 pub async fn handle_down(app: &mut App) {
     let (page, chat_id) = match &mut app.state {
-        FormState::Chat {
-            page,
-            chat_id,
-            ..
-        } => (page, chat_id),
+        FormState::Chat { page, chat_id, .. } => (page, chat_id),
         _ => return,
     };
     if *page <= 0 {

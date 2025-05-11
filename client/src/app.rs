@@ -1,14 +1,14 @@
 use crate::ui::create_chat::ChatCreationPhase;
-use quinn::{Connection};
+use quinn::Connection;
 use ratatui::widgets::ListState;
-use tracing::error;
 use shared::client_response::Command::{CreateChat, GetFriends};
 use shared::client_response::{ClientRequest, Command};
 use shared::models::chat_models::{Chat, ChatList, ChatMessage, ChatMessages, Count};
+use shared::models::user_models::FriendRequestList;
 use shared::models::user_models::{User, UserList};
-use shared::models::user_models::{FriendRequestList};
 use shared::server_response::ServerResponse;
 use std::sync::Arc;
+use tracing::error;
 
 const PAGE_SIZE: u64 = 10;
 
@@ -50,7 +50,7 @@ pub enum FormState {
         selected_index: usize,
         selected_option: usize, // Usize where 0 = accept and 1 = decline
     },
-    FriendList{
+    FriendList {
         selected_index: usize,
     },
     ConfirmUnfriend {
@@ -103,7 +103,10 @@ impl App {
             user_id: -1,
             unread_count: 0,
             list_state: ListState::default(),
-            friend_requests: FriendRequestList { incoming: vec![], outgoing: vec![] },
+            friend_requests: FriendRequestList {
+                incoming: vec![],
+                outgoing: vec![],
+            },
             friend_request_num: 0,
             friend_list: UserList { users: vec![] },
             friend_list_num: 0,
@@ -113,9 +116,16 @@ impl App {
 
     pub async fn refresh(&mut self) {
         match &self.state {
-            FormState::Chat { chat_id, chat_name, page, input_buffer,..} => {
+            FormState::Chat {
+                chat_id,
+                chat_name,
+                page,
+                input_buffer,
+                ..
+            } => {
                 let input_buffer = Some(input_buffer.clone());
-                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE, input_buffer).await;
+                self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE, input_buffer)
+                    .await;
             }
             FormState::Chats { .. } => {
                 self.enter_chats_view().await;
@@ -248,13 +258,13 @@ impl App {
     }
 
     pub fn set_friend_menu(&mut self) {
-        self.state = FormState::FriendMenu {selected_index: 0}
+        self.state = FormState::FriendMenu { selected_index: 0 }
     }
 
     pub async fn set_friend_requests(&mut self) {
         let req = ClientRequest {
             jwt: Option::from(self.jwt.clone()),
-            command: Command::GetFriendRequests {}
+            command: Command::GetFriendRequests {},
         };
         match self.send_request(&req).await {
             Ok(resp) => {
@@ -264,8 +274,8 @@ impl App {
                             Ok(requests) => {
                                 self.friend_request_num = requests.incoming.len();
                                 self.friend_requests = requests;
-                                self.state = FormState::FriendRequests {selected_index: 0};
-                            },
+                                self.state = FormState::FriendRequests { selected_index: 0 };
+                            }
                             Err(err) => {
                                 self.message = format!("Parse error: {}", err);
                             }
@@ -274,7 +284,7 @@ impl App {
                 } else if let Some(message) = resp.message.clone() {
                     self.message = message;
                 }
-            },
+            }
             Err(e) => {
                 self.message = e.to_string();
             }
@@ -296,9 +306,9 @@ impl App {
     }
 
     pub async fn set_friend_list(&mut self) {
-        let req = ClientRequest{
+        let req = ClientRequest {
             jwt: Option::from(self.jwt.clone()),
-            command: Command::GetFriends {}
+            command: Command::GetFriends {},
         };
         match self.send_request(&req).await {
             Ok(resp) => {
@@ -308,7 +318,7 @@ impl App {
                             Ok(friends) => {
                                 self.friend_list_num = friends.users.len();
                                 self.friend_list = friends;
-                                self.state = FormState::FriendList {selected_index: 0}
+                                self.state = FormState::FriendList { selected_index: 0 }
                             }
                             Err(e) => {
                                 self.message = format!("Parse error: {}", e);
@@ -318,13 +328,12 @@ impl App {
                 } else if let Some(message) = resp.message.clone() {
                     self.message = message;
                 }
-            },
+            }
             Err(e) => {
                 self.message = e.to_string();
             }
         }
     }
-
 
     // Add the set_exit method
     pub fn set_exit(&mut self) {
@@ -372,7 +381,9 @@ impl App {
                         self.message = "No unread message count returned".into();
                     }
                 } else {
-                    self.message = response.message.unwrap_or("Failed to get unread count".into());
+                    self.message = response
+                        .message
+                        .unwrap_or("Failed to get unread count".into());
                 }
             }
             Err(err) => {
@@ -396,7 +407,7 @@ impl App {
         }
     }
 
-    pub async fn logout(&mut self) -> (){
+    pub async fn logout(&mut self) -> () {
         let req = ClientRequest {
             jwt: Option::from(self.jwt.clone()),
             command: Command::Logout {
@@ -462,11 +473,27 @@ impl App {
         let page_count = self.get_page_count(chat_id, page_size).await;
 
         if let Some(page_count) = page_count {
-            self.get_chat_messages(chat_id, chat_name, page_count, page, page_size, input_buffer).await;
+            self.get_chat_messages(
+                chat_id,
+                chat_name,
+                page_count,
+                page,
+                page_size,
+                input_buffer,
+            )
+            .await;
         }
     }
 
-    pub async fn get_chat_messages(&mut self, chat_id: i32, chat_name: String, page_count: u64, page: u64, page_size: u64, input_buffer: Option<String>) {
+    pub async fn get_chat_messages(
+        &mut self,
+        chat_id: i32,
+        chat_name: String,
+        page_count: u64,
+        page: u64,
+        page_size: u64,
+        input_buffer: Option<String>,
+    ) {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
             command: Command::GetChatMessages {
@@ -511,9 +538,7 @@ impl App {
         // Mark the messages in the chat as read if they were retrieved
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
-            command: Command::MarkMessagesRead {
-                chat_id
-            },
+            command: Command::MarkMessagesRead { chat_id },
         };
 
         match self.send_request(&request).await {
@@ -530,7 +555,6 @@ impl App {
                 self.message = format!("Error: {}", err);
             }
         }
-
     }
 
     pub async fn get_page_count(&mut self, chat_id: i32, page_size: u64) -> Option<u64> {

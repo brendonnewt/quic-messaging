@@ -16,19 +16,19 @@ pub fn generate_self_signed_cert() -> ServerConfig {
     let private_key = PrivateKey(key_der);
 
     // Create server config with single cert
-    let mut server_config =
-        ServerConfig::with_single_cert(cert_chain, private_key).expect("Failed to create server config");
+    let mut server_config = ServerConfig::with_single_cert(cert_chain, private_key)
+        .expect("Failed to create server config");
 
     // Configure transport settings
     let mut transport_config = TransportConfig::default();
 
     transport_config.max_concurrent_bidi_streams(100_u32.into());
 
-    transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300)  // 300s = 5min
+    transport_config.max_idle_timeout(Some(
+        Duration::from_secs(300) // 300s = 5min
             .try_into()
-            .expect("valid idle timeout")),
-    );
+            .expect("valid idle timeout"),
+    ));
 
     transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
 

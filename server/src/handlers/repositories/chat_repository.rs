@@ -1,12 +1,10 @@
-use crate::entity::chats::Column;
 use crate::{entity, utils};
 use chrono::Utc;
 use entity::{chat_members, chats};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, SelectModel, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set,
 };
-use shared::models::user_models::User;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use utils::errors::server_error::ServerError;

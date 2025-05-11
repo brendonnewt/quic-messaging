@@ -3,23 +3,20 @@ pub mod handlers;
 pub mod utils;
 
 use crate::handlers::controllers::{auth_controller, chat_controller, user_controller};
+use dashmap::DashMap;
 use quinn::{Endpoint, RecvStream, SendStream};
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
 use serde_json::json;
 use server::utils::errors::server_error::ServerError;
 use shared::client_response::{ClientRequest, Command};
-use shared::server_response::ServerResponse;
-use std::io::ErrorKind;
-use std::net::{SocketAddr, ToSocketAddrs};
-use std::ops::Deref;
-use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::{Mutex, RwLock};
-use tracing::{error, info, warn};
-use tracing_subscriber;
-use dashmap::DashMap;
 use shared::models::server_models::ServerResponseModel;
+use shared::server_response::ServerResponse;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing::{error, info};
+use tracing_subscriber;
 
 const MAX_MESSAGE_SIZE: usize = 65536; // 64 KB
 
@@ -49,7 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
+async fn handle_connection(
+    conn: quinn::Connecting,
+    db: Arc<DatabaseConnection>,
+    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
@@ -68,41 +69,41 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                 let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
-                        // Get a ClientRequest JSON
-                        let req = match get_client_request(&mut recv).await {
-                            Ok(req) => req,
-                            Err(ServerError::Disconnected) => {
-                                info!("Client closed stream");
-                                return;
-                            }
-                            Err(e) => {
-                                println!("Client error: {:?}", e);
-                                // Respond with error JSON and continue listening
-                                if let Err(e) = send_response(
-                                    &mut send,
-                                    build_response::<(), ServerError>(Err(e), None, ""),
-                                )
-                                .await
-                                {
-                                    eprintln!("Error sending error response, closing...: {:?}", e);
-                                    return;
-                                }
-                                return;
-                            }
-                        };
-
-                        // Match command and forward message to the appropriate controller
-                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
-
-                        let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
-                        info!("List Of Logged In Users: {:?}", users);
-
-
-                        // Send the response
-                        if let Err(e) = send_response(&mut send, response).await {
-                            error!("Error sending response, closing...: {:?}", e);
+                    // Get a ClientRequest JSON
+                    let req = match get_client_request(&mut recv).await {
+                        Ok(req) => req,
+                        Err(ServerError::Disconnected) => {
+                            info!("Client closed stream");
                             return;
                         }
+                        Err(e) => {
+                            println!("Client error: {:?}", e);
+                            // Respond with error JSON and continue listening
+                            if let Err(e) = send_response(
+                                &mut send,
+                                build_response::<(), ServerError>(Err(e), None, ""),
+                            )
+                            .await
+                            {
+                                eprintln!("Error sending error response, closing...: {:?}", e);
+                                return;
+                            }
+                            return;
+                        }
+                    };
+
+                    // Match command and forward message to the appropriate controller
+                    let response =
+                        handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
+
+                    let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
+                    info!("List Of Logged In Users: {:?}", users);
+
+                    // Send the response
+                    if let Err(e) = send_response(&mut send, response).await {
+                        error!("Error sending response, closing...: {:?}", e);
+                        return;
+                    }
                 });
             }
         }
@@ -112,7 +113,12 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>, refresh_stream: Arc<Mutex<SendStream>>) -> ServerResponse {
+async fn handle_command(
+    req: ClientRequest,
+    db: Arc<DatabaseConnection>,
+    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+    refresh_stream: Arc<Mutex<SendStream>>,
+) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
@@ -122,7 +128,6 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
-
         }
 
         Command::Login { username, password } => {
@@ -142,23 +147,26 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
 
         Command::UpdateProfile { new_password } => {
             if let Some(jwt) = req.jwt {
-                let result = auth_controller::update_password(jwt.clone(), new_password, db.clone()).await;
+                let result =
+                    auth_controller::update_password(jwt.clone(), new_password, db.clone()).await;
                 build_response(result, Some(jwt), "Password Updated")
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".into())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".into())),
+                    None,
+                    "",
+                )
             }
         }
 
-        Command::Logout {username} => {
-            let result: Result<_, ServerError> = Ok(ServerResponseModel{success: true});
+        Command::Logout { username } => {
+            let result: Result<_, ServerError> = Ok(ServerResponseModel { success: true });
             let user = user_controller::get_user_by_username(username.clone(), db.clone()).await;
             match user {
                 Ok(user) => {
                     // Find the stream corresponding to the current session
-                    let current_id = {
-                        refresh_stream.lock().await.id()
-                    };
-                    
+                    let current_id = { refresh_stream.lock().await.id() };
+
                     if let Some(mut vec) = logged_in.get_mut(&user.id) {
                         for (i, entry) in vec.clone().iter().enumerate() {
                             let stream = entry.lock().await;
@@ -176,70 +184,112 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             }
         }
 
-        Command::SendFriendRequest {receiver_username} => {
+        Command::SendFriendRequest { receiver_username } => {
             if let Some(jwt) = req.jwt {
-                let user = user_controller::get_user_by_username(receiver_username.clone(), db.clone()).await;
+                let user =
+                    user_controller::get_user_by_username(receiver_username.clone(), db.clone())
+                        .await;
                 match user {
                     Ok(user) => {
-                        let result = user_controller::add_friend(jwt.clone(), user.id, db.clone()).await;
+                        let result =
+                            user_controller::add_friend(jwt.clone(), user.id, db.clone()).await;
                         if result.is_ok() {
                             notify_users(vec![user.id], logged_in.clone()).await;
                         }
-                        build_response(user_controller::add_friend(jwt.clone(), user.id, db.clone()).await, Some(jwt.clone()), "Friend Request Sent")
-                    },
-                    Err(e) => {
-                        build_response::<(), utils::errors::server_error::ServerError>(Err(e), None, "")
+                        build_response(
+                            user_controller::add_friend(jwt.clone(), user.id, db.clone()).await,
+                            Some(jwt.clone()),
+                            "Friend Request Sent",
+                        )
                     }
+                    Err(e) => build_response::<(), utils::errors::server_error::ServerError>(
+                        Err(e),
+                        None,
+                        "",
+                    ),
                 }
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
 
         Command::GetFriendRequests {} => {
             let jwt = req.jwt;
-            let result = user_controller::get_friend_requests(jwt.clone().unwrap(), db.clone()).await;
+            let result =
+                user_controller::get_friend_requests(jwt.clone().unwrap(), db.clone()).await;
             build_response(result, jwt.clone(), "Friend Request List Sent")
         }
 
-        Command::AcceptFriendRequest {sender_id} => {
+        Command::AcceptFriendRequest { sender_id } => {
             let jwt = req.jwt;
-            let result = user_controller::accept_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
+            let result =
+                user_controller::accept_friend_request(jwt.clone().unwrap(), sender_id, db.clone())
+                    .await;
             notify_users(vec![sender_id], logged_in.clone()).await;
             build_response(result, jwt.clone(), "Friend Request Accepted")
         }
 
-        Command::DeclineFriendRequest {sender_id} => {
+        Command::DeclineFriendRequest { sender_id } => {
             let jwt = req.jwt;
-            let result = user_controller::decline_friend_request(jwt.clone().unwrap(), sender_id, db.clone()).await;
+            let result = user_controller::decline_friend_request(
+                jwt.clone().unwrap(),
+                sender_id,
+                db.clone(),
+            )
+            .await;
             build_response(result, jwt.clone(), "Friend Request Denied")
         }
 
-        Command::RemoveFriend {friend_id} => {
+        Command::RemoveFriend { friend_id } => {
             let jwt = req.jwt;
-            let result = user_controller::remove_friend(jwt.clone().unwrap(), friend_id, db.clone()).await;
+            let result =
+                user_controller::remove_friend(jwt.clone().unwrap(), friend_id, db.clone()).await;
             notify_users(vec![friend_id], logged_in.clone()).await;
             build_response(result, jwt.clone(), "Unfriended")
         }
 
-        
         Command::GetChats => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::get_user_chats(jwt, db.clone()).await, None, "Chat List")
+                build_response(
+                    chat_controller::get_user_chats(jwt, db.clone()).await,
+                    None,
+                    "Chat List",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
-        
-        Command::GetChatMessages { chat_id, page, page_size} => {
+
+        Command::GetChatMessages {
+            chat_id,
+            page,
+            page_size,
+        } => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::get_chat_messages(jwt, chat_id, page, page_size, db.clone()).await, None, "Chat Messages")
+                build_response(
+                    chat_controller::get_chat_messages(jwt, chat_id, page, page_size, db.clone())
+                        .await,
+                    None,
+                    "Chat Messages",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
-        
-        Command::SendMessage { chat_id, content} => {
+
+        Command::SendMessage { chat_id, content } => {
             if let Some(jwt) = req.jwt {
                 let result = chat_controller::send_message(jwt, chat_id, content, db.clone()).await;
 
@@ -254,52 +304,102 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 // Send the response back
                 build_response(result, None, "Message Sent")
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
 
         Command::GetChatPages { chat_id, page_size } => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await, None, "Chat Page Count")
+                build_response(
+                    chat_controller::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await,
+                    None,
+                    "Chat Page Count",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
 
         Command::GetFriends => {
             if let Some(jwt) = req.jwt {
-                build_response(user_controller::get_friends(jwt, db.clone()).await, None, "Friends")
+                build_response(
+                    user_controller::get_friends(jwt, db.clone()).await,
+                    None,
+                    "Friends",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
 
-        Command::CreateChat { member_ids, name, is_group } => {
+        Command::CreateChat {
+            member_ids,
+            name,
+            is_group,
+        } => {
             if let Some(jwt) = req.jwt {
-                let result = chat_controller::create_chat(jwt, name, is_group, member_ids.clone(), db.clone()).await;
+                let result = chat_controller::create_chat(
+                    jwt,
+                    name,
+                    is_group,
+                    member_ids.clone(),
+                    db.clone(),
+                )
+                .await;
                 if result.is_ok() {
                     notify_users(member_ids, logged_in.clone()).await;
                 }
                 build_response(result, None, "Chat Page Count")
-
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
-        
+
         Command::GetUnreadMessageCount => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::get_unread_message_count(jwt, db.clone()).await, None, "Unread Message Count")
+                build_response(
+                    chat_controller::get_unread_message_count(jwt, db.clone()).await,
+                    None,
+                    "Unread Message Count",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
-        
+
         Command::MarkMessagesRead { chat_id } => {
             if let Some(jwt) = req.jwt {
-                build_response(chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await, None, "Unread Message Count")
+                build_response(
+                    chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await,
+                    None,
+                    "Unread Message Count",
+                )
             } else {
-                build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
             }
         }
 
@@ -386,7 +486,7 @@ async fn receive_msg(recv: &mut RecvStream) -> Result<Vec<u8>, ServerError> {
                 Err(ServerError::RequestInvalid(
                     "Couldn't read message length".into(),
                 ))
-            }
+            };
         }
     }
     let msg_len = u32::from_be_bytes(len_buf) as usize;
@@ -417,17 +517,21 @@ async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, 
         Err(e) => {
             println!("{}", e.to_string());
             Err(ServerError::RequestInvalid("Invalid JSON".to_string()))
-        },
+        }
     }
 }
 
-async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
+async fn notify_users(
+    user_ids: Vec<i32>,
+    stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+) {
     for user_id in user_ids {
         if let Some(stream_vec) = stream_map.get_mut(&user_id) {
             for stream in stream_vec.iter() {
                 let mut stream_lock = stream.lock().await;
                 println!("Notifying user {} in stream map", user_id);
-                let bytes = serde_json::to_vec(&shared::server_response::Refresh).expect("Failed to serialize refresh ping");
+                let bytes = serde_json::to_vec(&shared::server_response::Refresh)
+                    .expect("Failed to serialize refresh ping");
                 let len = (bytes.len() as u32).to_be_bytes();
                 if let Err(e) = stream_lock.write_all(&len).await {
                     eprintln!("Failed to notify user {}: {}", user_id, e);

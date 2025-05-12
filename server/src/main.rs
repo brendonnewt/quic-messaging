@@ -46,14 +46,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(
-    conn: quinn::Connecting,
-    db: Arc<DatabaseConnection>,
-    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
-) {
+async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
+
+            let current_user: Arc<Mutex<Option<i32>>> = Arc::new(Mutex::new(None));
+
+
+
             let send_refresh = match connection.open_uni().await {
                 Ok(send) => send,
                 Err(err) => {
@@ -63,47 +64,81 @@ async fn handle_connection(
             };
             let refresh_stream = Arc::new(Mutex::new(send_refresh));
 
+            {
+                let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
+                let mut connection_clone = connection.clone();
+                let refresh_clone = refresh_stream.clone();
+
+                tokio::spawn(async move {
+                    let _ = connection_clone.closed().await;
+                    if let Some(user_id) = *current_user.lock().await {
+                        let current_id = { refresh_clone.lock().await.id() };
+                        let mut remove_user = false;
+                        if let Some(mut vec) = logged_in.get_mut(&user_id) {
+                            for (i, entry) in vec.clone().iter().enumerate() {
+                                let stream = entry.lock().await;
+                                if stream.id().eq(&current_id) {
+                                    vec.remove(i);
+                                    break;
+                                }
+                            }
+
+                            if vec.is_empty() {
+                                remove_user = true;
+                            }
+                        }
+
+                        if remove_user {
+                            logged_in.remove(&user_id);
+                        }
+                    }
+
+                });
+            }
+
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
                 let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
-                    // Get a ClientRequest JSON
-                    let req = match get_client_request(&mut recv).await {
-                        Ok(req) => req,
-                        Err(ServerError::Disconnected) => {
-                            info!("Client closed stream");
-                            return;
-                        }
-                        Err(e) => {
-                            println!("Client error: {:?}", e);
-                            // Respond with error JSON and continue listening
-                            if let Err(e) = send_response(
-                                &mut send,
-                                build_response::<(), ServerError>(Err(e), None, ""),
-                            )
-                            .await
-                            {
-                                eprintln!("Error sending error response, closing...: {:?}", e);
+                        // Get a ClientRequest JSON
+                        let req = match get_client_request(&mut recv).await {
+                            Ok(req) => req,
+                            Err(ServerError::Disconnected) => {
+                                info!("Client closed stream");
                                 return;
                             }
+                            Err(e) => {
+                                println!("Client error: {:?}", e);
+                                // Respond with error JSON and continue listening
+                                if let Err(e) = send_response(
+                                    &mut send,
+                                    build_response::<(), ServerError>(Err(e), None, ""),
+                                )
+                                .await
+                                {
+                                    eprintln!("Error sending error response, closing...: {:?}", e);
+                                    return;
+                                }
+                                return;
+                            }
+                        };
+
+                        // Match command and forward message to the appropriate controller
+                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone, current_user.clone()).await;
+
+                        let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
+                        info!("List Of Logged In Users: {:?}", users);
+
+
+                        // Send the response
+                        if let Err(e) = send_response(&mut send, response).await {
+                            error!("Error sending response, closing...: {:?}", e);
                             return;
                         }
-                    };
-
-                    // Match command and forward message to the appropriate controller
-                    let response =
-                        handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
-
-                    let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
-                    info!("List Of Logged In Users: {:?}", users);
-
-                    // Send the response
-                    if let Err(e) = send_response(&mut send, response).await {
-                        error!("Error sending response, closing...: {:?}", e);
-                        return;
-                    }
                 });
             }
         }
@@ -113,18 +148,14 @@ async fn handle_connection(
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(
-    req: ClientRequest,
-    db: Arc<DatabaseConnection>,
-    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
-    refresh_stream: Arc<Mutex<SendStream>>,
-) -> ServerResponse {
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>, refresh_stream: Arc<Mutex<SendStream>>, current_user: Arc<Mutex<Option<i32>>>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
             // User is automatically logged in upon registration
             if let Ok(auth) = &result {
                 logged_in.insert(auth.user_id, vec![refresh_stream]);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
@@ -140,6 +171,7 @@ async fn handle_command(
                     logged_in.insert(auth.user_id, vec![refresh_stream]);
                 }
                 info!("User {} logged in", username);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
@@ -166,7 +198,7 @@ async fn handle_command(
                 Ok(user) => {
                     // Find the stream corresponding to the current session
                     let current_id = { refresh_stream.lock().await.id() };
-                    
+
                     let mut remove_user = false;
                     if let Some(mut vec) = logged_in.get_mut(&user.id) {
                         for (i, entry) in vec.clone().iter().enumerate() {
@@ -176,16 +208,16 @@ async fn handle_command(
                                 break;
                             }
                         }
-                        
+
                         if vec.is_empty() {
                             remove_user = true;
                         }
                     }
-                    
+
                     if remove_user {
                         logged_in.remove(&user.id);
                     }
-                    
+
                     build_response(result, req.jwt, "Logged out")
                 }
                 Err(e) => {
@@ -396,7 +428,7 @@ async fn handle_command(
                 )
             }
         }
-
+        
         Command::GetUnreadMessageCount => {
             if let Some(jwt) = req.jwt {
                 build_response(
@@ -412,7 +444,7 @@ async fn handle_command(
                 )
             }
         }
-
+        
         Command::MarkMessagesRead { chat_id } => {
             if let Some(jwt) = req.jwt {
                 build_response(
@@ -547,10 +579,7 @@ async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, 
     }
 }
 
-async fn notify_users(
-    user_ids: Vec<i32>,
-    stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
-) {
+async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     for user_id in user_ids {
         if let Some(stream_vec) = stream_map.get_mut(&user_id) {
             for stream in stream_vec.iter() {

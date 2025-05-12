@@ -166,7 +166,8 @@ async fn handle_command(
                 Ok(user) => {
                     // Find the stream corresponding to the current session
                     let current_id = { refresh_stream.lock().await.id() };
-
+                    
+                    let mut remove_user = false;
                     if let Some(mut vec) = logged_in.get_mut(&user.id) {
                         for (i, entry) in vec.clone().iter().enumerate() {
                             let stream = entry.lock().await;
@@ -175,10 +176,16 @@ async fn handle_command(
                                 break;
                             }
                         }
+                        
                         if vec.is_empty() {
-                            logged_in.remove(&user.id);
+                            remove_user = true;
                         }
                     }
+                    
+                    if remove_user {
+                        logged_in.remove(&user.id);
+                    }
+                    
                     build_response(result, req.jwt, "Logged out")
                 }
                 Err(e) => {

@@ -175,6 +175,9 @@ async fn handle_command(
                                 break;
                             }
                         }
+                        if vec.is_empty() {
+                            logged_in.remove(&user.id);
+                        }
                     }
                     build_response(result, req.jwt, "Logged out")
                 }

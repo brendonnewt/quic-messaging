@@ -86,7 +86,7 @@ pub async fn update_password(
 
     // Ensure the user exists
     let user = get_info(jwt, db.clone()).await?;
-    
+
     // Call the repository to update the password in the database
     let username = user.username; // Assuming you have `username` in the user object
     user_repository::update_password(username, hashed, db.clone()).await?;

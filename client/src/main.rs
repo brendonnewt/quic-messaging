@@ -42,11 +42,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));
 
     let mut transport_config = TransportConfig::default();
-    transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300) //300 sec = 5 minutes
+    transport_config.max_idle_timeout(Some(
+        Duration::from_secs(300) //300 sec = 5 minutes
             .try_into()
-            .expect("valid idle timeout")),
-    );
+            .expect("valid idle timeout"),
+    ));
 
     client_cfg.transport_config(Arc::new(transport_config));
 

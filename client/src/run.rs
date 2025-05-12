@@ -63,12 +63,10 @@ pub async fn run_app(
             FormState::ChatCreation(_) => {
                 ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::ProfileView{..} => {
+            FormState::ProfileView { .. } => {
                 ui::profile::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::Close{..} => {
-                ui::close::render::<CrosstermBackend<Stdout>>(f, app)
-            }
+            FormState::Close { .. } => ui::close::render::<CrosstermBackend<Stdout>>(f, app),
             FormState::Exit => return,
         })?;
 
@@ -135,12 +133,12 @@ pub async fn run_app(
                     ui::user_menu::handle_input(app, key).await;
                 }
 
-                FormState::ProfileView {..} => {
-                    ui::profile::handle_input(app,key).await;
+                FormState::ProfileView { .. } => {
+                    ui::profile::handle_input(app, key).await;
                 }
 
-                FormState::Close{..} => {
-                    if ui::close::handle_input(app, key).await{
+                FormState::Close { .. } => {
+                    if ui::close::handle_input(app, key).await {
                         break;
                     }
                 }

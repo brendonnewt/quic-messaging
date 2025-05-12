@@ -149,7 +149,11 @@ pub async fn get_chat_page_count(
     Ok(Count { count: pages })
 }
 
-pub async fn get_chats_page_count(jwt: String, page_size: u64, db: Arc<DatabaseConnection>) -> Result<Count, ServerError> {
+pub async fn get_chats_page_count(
+    jwt: String,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<Count, ServerError> {
     // Ensure token provided is valid
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let user_id = claim.claims.user_id;

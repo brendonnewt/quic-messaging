@@ -69,11 +69,11 @@ pub enum Command {
     GetUnreadChatMessageCount {
         chat_id: i32,
     },
-    UpdateProfile{
+    UpdateProfile {
         new_password: String,
     },
     GetUnreadMessageCount,
     Logout {
         username: String,
-    }
+    },
 }

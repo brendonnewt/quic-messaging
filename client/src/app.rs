@@ -70,7 +70,7 @@ pub enum FormState {
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
-    ProfileView{
+    ProfileView {
         new_password: String,
         active_field: ActiveField,
     },
@@ -445,7 +445,6 @@ impl App {
     }
 
     pub async fn enter_chats_view(&mut self, page: u64, page_size: u64) {
-
         let page_count = self.get_chats_page_count(page_size).await;
 
         if let Some(page_count) = page_count {
@@ -552,10 +551,7 @@ impl App {
     pub async fn get_chat_list(&mut self, page: u64, page_size: u64, page_count: u64) {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
-            command: Command::GetChats {
-                page,
-                page_size,
-            },
+            command: Command::GetChats { page, page_size },
         };
         match self.send_request(&request).await {
             Ok(response) => {
@@ -607,7 +603,9 @@ impl App {
                         self.message = "No page count returned".into();
                     }
                 } else {
-                    self.message = response.message.unwrap_or("Failed to get chat pages".into());
+                    self.message = response
+                        .message
+                        .unwrap_or("Failed to get chat pages".into());
                 }
             }
             Err(err) => {
@@ -636,7 +634,9 @@ impl App {
                         self.message = "No page count returned".into();
                     }
                 } else {
-                    self.message = response.message.unwrap_or("Failed to get chats pages".into());
+                    self.message = response
+                        .message
+                        .unwrap_or("Failed to get chats pages".into());
                 }
             }
             Err(err) => {

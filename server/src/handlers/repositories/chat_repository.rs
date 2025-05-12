@@ -164,10 +164,12 @@ pub async fn get_user_chats(
     Ok(chats)
 }
 
-pub async fn get_user_chats_paged(user_id: i32,
-                                  page: u64,
-                                  page_size: u64,
-                                  db: Arc<DatabaseConnection>) -> Result<Vec<entity::chats::Model>, ServerError> {
+pub async fn get_user_chats_paged(
+    user_id: i32,
+    page: u64,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<Vec<entity::chats::Model>, ServerError> {
     let chats = get_user_chats(user_id, db.clone()).await?;
 
     let start = (page * page_size) as usize;
@@ -185,7 +187,6 @@ pub async fn get_chats_page_count(
     page_size: u64,
     db: Arc<DatabaseConnection>,
 ) -> Result<u64, ServerError> {
-
     let total_chats = entity::chat_members::Entity::find()
         .filter(entity::chat_members::Column::UserId.eq(user_id))
         .count(&*db)

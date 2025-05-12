@@ -46,14 +46,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
+async fn handle_connection(
+    conn: quinn::Connecting,
+    db: Arc<DatabaseConnection>,
+    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
 
             let current_user: Arc<Mutex<Option<i32>>> = Arc::new(Mutex::new(None));
-
-
 
             let send_refresh = match connection.open_uni().await {
                 Ok(send) => send,
@@ -93,7 +95,6 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                             logged_in.remove(&user_id);
                         }
                     }
-
                 });
             }
 
@@ -104,41 +105,47 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                 let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
-                        // Get a ClientRequest JSON
-                        let req = match get_client_request(&mut recv).await {
-                            Ok(req) => req,
-                            Err(ServerError::Disconnected) => {
-                                info!("Client closed stream");
-                                return;
-                            }
-                            Err(e) => {
-                                println!("Client error: {:?}", e);
-                                // Respond with error JSON and continue listening
-                                if let Err(e) = send_response(
-                                    &mut send,
-                                    build_response::<(), ServerError>(Err(e), None, ""),
-                                )
-                                .await
-                                {
-                                    eprintln!("Error sending error response, closing...: {:?}", e);
-                                    return;
-                                }
-                                return;
-                            }
-                        };
-
-                        // Match command and forward message to the appropriate controller
-                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone, current_user.clone()).await;
-
-                        let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
-                        info!("List Of Logged In Users: {:?}", users);
-
-
-                        // Send the response
-                        if let Err(e) = send_response(&mut send, response).await {
-                            error!("Error sending response, closing...: {:?}", e);
+                    // Get a ClientRequest JSON
+                    let req = match get_client_request(&mut recv).await {
+                        Ok(req) => req,
+                        Err(ServerError::Disconnected) => {
+                            info!("Client closed stream");
                             return;
                         }
+                        Err(e) => {
+                            println!("Client error: {:?}", e);
+                            // Respond with error JSON and continue listening
+                            if let Err(e) = send_response(
+                                &mut send,
+                                build_response::<(), ServerError>(Err(e), None, ""),
+                            )
+                            .await
+                            {
+                                eprintln!("Error sending error response, closing...: {:?}", e);
+                                return;
+                            }
+                            return;
+                        }
+                    };
+
+                    // Match command and forward message to the appropriate controller
+                    let response = handle_command(
+                        req,
+                        db.clone(),
+                        logged_in.clone(),
+                        refresh_clone,
+                        current_user.clone(),
+                    )
+                    .await;
+
+                    let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
+                    info!("List Of Logged In Users: {:?}", users);
+
+                    // Send the response
+                    if let Err(e) = send_response(&mut send, response).await {
+                        error!("Error sending response, closing...: {:?}", e);
+                        return;
+                    }
                 });
             }
         }
@@ -148,7 +155,13 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>, refresh_stream: Arc<Mutex<SendStream>>, current_user: Arc<Mutex<Option<i32>>>) -> ServerResponse {
+async fn handle_command(
+    req: ClientRequest,
+    db: Arc<DatabaseConnection>,
+    logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+    refresh_stream: Arc<Mutex<SendStream>>,
+    current_user: Arc<Mutex<Option<i32>>>,
+) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
@@ -428,7 +441,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 )
             }
         }
-        
+
         Command::GetUnreadMessageCount => {
             if let Some(jwt) = req.jwt {
                 build_response(
@@ -444,7 +457,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 )
             }
         }
-        
+
         Command::MarkMessagesRead { chat_id } => {
             if let Some(jwt) = req.jwt {
                 build_response(
@@ -579,7 +592,10 @@ async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, 
     }
 }
 
-async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
+async fn notify_users(
+    user_ids: Vec<i32>,
+    stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>,
+) {
     for user_id in user_ids {
         if let Some(stream_vec) = stream_map.get_mut(&user_id) {
             for stream in stream_vec.iter() {

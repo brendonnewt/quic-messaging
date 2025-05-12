@@ -24,12 +24,11 @@ pub fn generate_self_signed_cert() -> ServerConfig {
 
     transport_config.max_concurrent_bidi_streams(100_u32.into());
 
-    transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300) //Connection is closed and user logged out after 5 min
+    transport_config.max_idle_timeout(Some(
+        Duration::from_secs(300) //Connection is closed and user logged out after 5 min
             .try_into()
             .expect("valid idle timeout"),
     ));
-
 
     server_config.transport = Arc::new(transport_config);
 

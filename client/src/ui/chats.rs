@@ -24,7 +24,12 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         ])
         .split(f.area());
 
-    if let FormState::Chats { selected_index, page, page_count } = &app.state {
+    if let FormState::Chats {
+        selected_index,
+        page,
+        page_count,
+    } = &app.state
+    {
         let items: Vec<ListItem> = app
             .chats
             .iter()
@@ -98,9 +103,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             KeyCode::Right => {
                 let (page, page_count) = match &mut app.state {
                     FormState::Chats {
-                        page,
-                        page_count,
-                        ..
+                        page, page_count, ..
                     } => (page, page_count),
                     _ => return,
                 };

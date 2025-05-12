@@ -43,11 +43,24 @@ The core of your project should, ideally, be written in Rust. Depending on the p
 
 ## Questions
 - What is your project?
+	- Our project is a chat application utilizing QUIC. It takes advantage of QUIC's efficiency in creating concurrent bidirectional streams to send various responses and commands back and forth between the client and the server, hosted on GCP. A user can use the application to chat with friends through the terminal, using a UI created with the ratatui crate.
 - What novel work did you do?
+	- Utilizing a QUIC server.
+	- Creating bidirectional streams that only exist for a single RPC command/response pair.
+	- Creating a terminal UI.
+	- Generating self-signed certificates.
 - What did you learn?
+	- QUIC is more useful than TCP for creating and dropping streams quickly for the sake of single command communication between two endpoints.
 - What was challenging?
+	- Learning which versions of the crates would work for our purposes. Not only did we have to consider how the crates might react to each other, but also if they could be used universally on any machine and if they could be utilized on our GCP host.
+	- Learning how to effectively utilize the advantages of QUIC. Trying to utilize it in the same way as TCP was not effective and eventually learning that it was actually more effective to create and drop individual streams to take advantage of QUIC's concurrency handling took some experimentation and online research.
 - What AI tools did you use, and what did you use them for? What were their benefits and drawbacks?
+	- ChatGPT was used for debugging and research.
+		- Benefits: ChatGPT was great at identifying errors that we had not seen before, such as the many crate issues. It was also useful in quickly generating useful debug lines that could be used to solve an immediate issue and then be immediately removed.
+		- Drawbacks: ChatGPT, while helpful at identifying why the crates were causing errors, was not so helpful at determining what version of each crate would work correctly and what syntax had changed between each version.
 - What would you do differently next time?
+	- Look at the documentation for Quinn and Rustls to quickly learn of any common issues that might be encountered before starting to code.
+	- Do some pre-programming research on what crates might be usefull rather than finding the crates as they are needed. This would prevent having to divert from the current task to solve crate conflicts.
 
 ## What to submit
 - Push your working code to the main branch of your team's GitHub Repository before the deadline

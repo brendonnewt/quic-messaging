@@ -9,7 +9,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::ui::chat::get_messages;
 
 const PAGE_SIZE: u64 = 10;
 

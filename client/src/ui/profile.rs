@@ -8,8 +8,6 @@ use ratatui::{
     Frame,
 };
 use shared::client_response::{ClientRequest, Command};
-use shared::models::auth_models::AuthResponseModel;
-use shared::models::chat_models::ChatList;
 use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {

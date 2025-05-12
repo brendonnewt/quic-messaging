@@ -137,13 +137,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 if app.chats.len() <= 0 {
                     return;
                 }
-                
-                if app.chats.len() == 1 {
-                    *selected_index = 0;
-                    return;
-                }
 
-                if *selected_index < app.chats.len() - 2 {
+                if *selected_index < app.chats.len() - 1 {
                     *selected_index += 1;
                 }
             }

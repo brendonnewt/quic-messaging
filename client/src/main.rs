@@ -1,24 +1,20 @@
-mod ui;
 mod app;
 mod event;
 mod run;
+mod ui;
 mod utils;
 
-use crate::app::{App, FormState};
+use crate::app::App;
 use run::run_app;
 
-use futures::StreamExt;
 use quinn::{ClientConfig, Endpoint, RecvStream, TransportConfig};
 use rustls::client::{ClientConfig as RustlsClientConfig, ServerCertVerified, ServerCertVerifier};
+use shared::server_response::Refresh;
 use std::error::Error;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time::timeout;
-use tracing_subscriber::prelude::*;
-use shared::models::chat_models::ChatList;
-use shared::server_response::Refresh;
 
 struct TestVerifier;
 impl ServerCertVerifier for TestVerifier {
@@ -36,20 +32,23 @@ impl ServerCertVerifier for TestVerifier {
 }
 
 #[tokio::main]
-async fn main()  -> Result<(), Box<dyn Error>>{
-    let mut serv_addr = utils::constants::SERVER_ADDR.to_owned();
+async fn main() -> Result<(), Box<dyn Error>> {
+    let serv_addr = utils::constants::SERVER_ADDR.to_owned();
     // QUIC Client
-    let rustls_cfg = RustlsClientConfig::builder().with_safe_defaults().with_custom_certificate_verifier(Arc::new(TestVerifier)).with_no_client_auth();
+    let rustls_cfg = RustlsClientConfig::builder()
+        .with_safe_defaults()
+        .with_custom_certificate_verifier(Arc::new(TestVerifier))
+        .with_no_client_auth();
     let mut client_cfg = ClientConfig::new(Arc::new(rustls_cfg));
 
     let mut transport_config = TransportConfig::default();
-    transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300) //300 sec = 5 minutes
+    transport_config.max_idle_timeout(Some(
+        Duration::from_secs(300) //300 sec = 5 minutes
             .try_into()
-            .expect("valid idle timeout")),
-    );
+            .expect("valid idle timeout"),
+    ));
 
-    client_cfg.transport_config( Arc::new(transport_config) );
+    client_cfg.transport_config(Arc::new(transport_config));
 
     let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
     endpoint.set_default_client_config(client_cfg);

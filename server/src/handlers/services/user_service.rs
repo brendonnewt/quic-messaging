@@ -1,17 +1,14 @@
-use std::sync::Arc;
-use sea_orm::DatabaseConnection;
-use crate::{entity, utils};
-use utils::errors::server_error::ServerError;
 use crate::entity::sea_orm_active_enums::Status;
+use crate::handlers::repositories::user_repository;
+use crate::utils::jwt;
+use crate::{entity, utils};
+use sea_orm::DatabaseConnection;
 use shared::models::server_models::ServerResponseModel;
 use shared::models::user_models::{FriendRequestList, User, UserList};
-use crate::utils::jwt;
-use crate::handlers::repositories::user_repository;
+use std::sync::Arc;
+use utils::errors::server_error::ServerError;
 
-pub async fn get_info(
-    jwt: String,
-    db: Arc<DatabaseConnection>,
-) -> Result<User, ServerError> {
+pub async fn get_info(jwt: String, db: Arc<DatabaseConnection>) -> Result<User, ServerError> {
     // Decode JWT
     let claim = match jwt::decode_jwt(&jwt) {
         Ok(claim) => claim,
@@ -22,26 +19,25 @@ pub async fn get_info(
 
     // If a user is found, return their info
     match user {
-        Some(user) => {
-            Ok(User {
-                id: user.id,
-                username: user.username,
-            })
-        },
+        Some(user) => Ok(User {
+            id: user.id,
+            username: user.username,
+        }),
         None => Err(ServerError::UserNotFound),
     }
 }
 
-pub async fn get_user_by_username(username: String, db: Arc<DatabaseConnection>) -> Result<User, ServerError> {
+pub async fn get_user_by_username(
+    username: String,
+    db: Arc<DatabaseConnection>,
+) -> Result<User, ServerError> {
     let user = user_repository::get_user_by_username(username, db).await?;
 
     match user {
-        Some(user) => {
-            Ok(User {
-                id: user.id,
-                username: user.username,
-            })
-        },
+        Some(user) => Ok(User {
+            id: user.id,
+            username: user.username,
+        }),
         None => Err(ServerError::UserNotFound),
     }
 }
@@ -76,7 +72,13 @@ pub async fn accept_friend_request(
     let receiver_id = claim.claims.user_id;
 
     // Update request to accept
-    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Accepted, db.clone()).await?;
+    user_repository::update_friend_request_status(
+        sender_id,
+        receiver_id,
+        Status::Accepted,
+        db.clone(),
+    )
+    .await?;
 
     // Create mutual friendships
     for (u1, u2) in [(sender_id, receiver_id), (receiver_id, sender_id)] {
@@ -95,12 +97,22 @@ pub async fn decline_friend_request(
     let receiver_id = claim.claims.user_id;
 
     // Mark request as rejected and delete it
-    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Rejected, db.clone()).await?;
+    user_repository::update_friend_request_status(
+        sender_id,
+        receiver_id,
+        Status::Rejected,
+        db.clone(),
+    )
+    .await?;
 
     Ok(ServerResponseModel { success: true })
 }
 
-pub async fn cancel_friend_request(jwt: String, receiver_id: i32, db: Arc<DatabaseConnection>) -> Result<ServerResponseModel, ServerError> {
+pub async fn cancel_friend_request(
+    jwt: String,
+    receiver_id: i32,
+    db: Arc<DatabaseConnection>,
+) -> Result<ServerResponseModel, ServerError> {
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let sender_id = claim.claims.user_id;
 
@@ -112,10 +124,15 @@ pub async fn cancel_friend_request(jwt: String, receiver_id: i32, db: Arc<Databa
     }
 
     // Delete friend request through the database
-    user_repository::update_friend_request_status(sender_id, receiver_id, Status::Rejected, db.clone()).await?;
+    user_repository::update_friend_request_status(
+        sender_id,
+        receiver_id,
+        Status::Rejected,
+        db.clone(),
+    )
+    .await?;
 
     Ok(ServerResponseModel { success: true })
-
 }
 
 pub async fn get_friend_requests(
@@ -126,10 +143,20 @@ pub async fn get_friend_requests(
     let user_id = claim.claims.user_id;
 
     // Incoming: others sent to user
-    let incoming_requests = user_repository::get_user_friend_requests(user_id, Some(entity::friend_requests::Column::ReceiverId), db.clone()).await?;
+    let incoming_requests = user_repository::get_user_friend_requests(
+        user_id,
+        Some(entity::friend_requests::Column::ReceiverId),
+        db.clone(),
+    )
+    .await?;
 
     // Outgoing: User sent to others
-    let outgoing_requests = user_repository::get_user_friend_requests(user_id, Some(entity::friend_requests::Column::SenderId), db.clone()).await?;
+    let outgoing_requests = user_repository::get_user_friend_requests(
+        user_id,
+        Some(entity::friend_requests::Column::SenderId),
+        db.clone(),
+    )
+    .await?;
 
     // Collect ids
     let incoming_ids: Vec<i32> = incoming_requests.iter().map(|r| r.sender_id).collect();
@@ -137,10 +164,10 @@ pub async fn get_friend_requests(
 
     // Get incoming user info
     let incoming_users = user_repository::get_users_from_list(incoming_ids, db.clone()).await?;
-    
+
     // Get outgoing user info
     let outgoing_users = user_repository::get_users_from_list(outgoing_ids, db.clone()).await?;
-    
+
     // Create incoming JSON vector
     let incoming = incoming_users
         .into_iter()
@@ -149,7 +176,7 @@ pub async fn get_friend_requests(
             username: u.username,
         })
         .collect();
-    
+
     // Create outgoing JSON vector
     let outgoing = outgoing_users
         .into_iter()
@@ -199,9 +226,12 @@ pub async fn block_user(
     Ok(ServerResponseModel { success: true })
 }
 
-pub async fn get_friends(jwt: String, db: Arc<DatabaseConnection>) -> Result<UserList, ServerError> {
+pub async fn get_friends(
+    jwt: String,
+    db: Arc<DatabaseConnection>,
+) -> Result<UserList, ServerError> {
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
-    let user =  user_repository::get_user_by_id(claim.claims.user_id, db.clone()).await?;
+    let user = user_repository::get_user_by_id(claim.claims.user_id, db.clone()).await?;
     if let Some(user) = user {
         // Get user friends and collect them into a vector
         let friends = user_repository::get_user_friends(user.id, db.clone()).await?;
@@ -209,14 +239,16 @@ pub async fn get_friends(jwt: String, db: Arc<DatabaseConnection>) -> Result<Use
 
         // Get all friends user info and collect them into a JSON response
         let users = user_repository::get_users_from_list(friend_ids, db.clone()).await?;
-        let friends = users.into_iter().map(|u| User {
-            id: u.id,
-            username: u.username,
-        }).collect();
+        let friends = users
+            .into_iter()
+            .map(|u| User {
+                id: u.id,
+                username: u.username,
+            })
+            .collect();
 
         Ok(UserList { users: friends })
     } else {
         Err(ServerError::UserNotFound)
     }
 }
-

@@ -1,6 +1,6 @@
-use crate::app::{ActiveField, App, FormState};
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::app::{App, FormState};
 use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
+use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -8,7 +8,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     Layout::default()
@@ -20,8 +19,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .chain([Constraint::Min(0)])
                 .collect::<Vec<_>>(),
         )
-        .split(f.size());
-    
+        .split(f.area());
+
     let fr_list = &app.friend_list;
 
     let selected = if let FormState::FriendList { selected_index } = app.state {
@@ -48,17 +47,26 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .collect();
 
     app.set_friend_list_num(items.len());
-    
+
     let list = {
         if app.friend_list_num == 0 {
             List::new(items)
-                .block(Block::default().borders(Borders::ALL).title("No friends").title("Much sad :("))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("No friends")
+                        .title("Much sad :("),
+                )
                 .highlight_style(Style::default().bg(Color::DarkGray))
         } else {
             List::new(items)
-                .block(Block::default().borders(Borders::ALL).title("Friend List").title("Select Friend to Unfriend Them"))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Friend List")
+                        .title("Select Friend to Unfriend Them"),
+                )
                 .highlight_style(Style::default().bg(Color::DarkGray))
-
         }
     };
 
@@ -66,14 +74,12 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
     f.render_widget(list, area);
 }
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
-    use KeyCode::*;
-
     match key.code {
         Up | Down => {
             if let FormState::FriendList { selected_index } = &mut app.state {
@@ -105,7 +111,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             app.set_confirm_unfriend(idx);
         }
 
-        Esc => app.set_friend_menu(),
+        Esc => {
+            app.message.clear();
+            app.set_friend_menu()
+        }
 
         _ => {}
     }

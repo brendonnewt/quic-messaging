@@ -4,12 +4,14 @@ use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Span, Text},
+    text::Text,
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 use shared::models::user_models::User;
 use std::mem;
+
+const PAGE_SIZE: u64 = 10;
 
 // Additional FormState variant to support the chat creation flow
 #[derive(Debug, Clone)]
@@ -27,7 +29,7 @@ pub enum ChatCreationPhase {
 
 // Render function for the chat creation UI
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
-    let size = f.size();
+    let size = f.area();
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
@@ -165,12 +167,12 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         username: app.username.clone(),
                     });
                     app.create_chat(chosen.clone(), None).await;
-                    app.enter_chats_view().await;
+                    app.enter_chats_view(0, PAGE_SIZE).await;
                     return;
                 }
             }
             KeyCode::Esc => {
-                app.enter_chats_view().await;
+                app.enter_chats_view(0, PAGE_SIZE).await;
                 return;
             }
             _ => {}
@@ -183,12 +185,16 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             KeyCode::Enter => {
                 let name = name_input.trim().to_string();
                 if !name.is_empty() {
+                    if name.len() > 20 {
+                        app.message = "Group name cannot be longer than 20 characters.".into();
+                        return;
+                    }
                     chosen.push(User {
                         id: app.user_id,
                         username: app.username.clone(),
                     });
                     app.create_chat(chosen.clone(), Some(name)).await;
-                    app.enter_chats_view().await;
+                    app.enter_chats_view(0, PAGE_SIZE).await;
                     return;
                 } else {
                     app.message = "Group name cannot be empty.".into();
@@ -196,7 +202,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Esc => {
                 app.message.clear();
-                app.enter_chats_view().await;
+                app.enter_chats_view(0, PAGE_SIZE).await;
                 return;
             }
             _ => {}

@@ -3,22 +3,16 @@ use crate::{
     event, ui,
 };
 use crossterm::{
-    event::KeyCode,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use shared::client_response::{ClientRequest, Command};
 use std::io::{self, Stdout};
-use std::sync::Arc;
-use std::time::Duration;
-use quinn::RecvStream;
-use serde_json::ser::State;
-use tokio::io::AsyncRead;
-use tokio::time::timeout;
-use tracing::{error, info};
 
-pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_app(
+    app: &mut App,
+    rx: spmc::Receiver<u8>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
@@ -64,21 +58,15 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
             FormState::ConfirmUnfriend { .. } => {
                 ui::confirm_unfriend::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::Chats { .. } => {
-                ui::chats::render::<CrosstermBackend<Stdout>>(f, app)
-            }
-            FormState::Chat { .. } => {
-                ui::chat::render::<CrosstermBackend<Stdout>>(f, app)
-            }
-            FormState::ChatCreation(phase) => {
+            FormState::Chats { .. } => ui::chats::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::Chat { .. } => ui::chat::render::<CrosstermBackend<Stdout>>(f, app),
+            FormState::ChatCreation(_) => {
                 ui::create_chat::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::ProfileView{..} => {
+            FormState::ProfileView { .. } => {
                 ui::profile::render::<CrosstermBackend<Stdout>>(f, app)
             }
-            FormState::Close{..} => {
-                ui::close::render::<CrosstermBackend<Stdout>>(f, app)
-            }
+            FormState::Close { .. } => ui::close::render::<CrosstermBackend<Stdout>>(f, app),
             FormState::Exit => return,
         })?;
 
@@ -127,15 +115,15 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
                 FormState::MainMenu => {
                     ui::main_menu::handle_input(app, key).await;
                 }
-                
+
                 FormState::Chats { .. } => {
                     ui::chats::handle_input(app, key).await;
                 }
-                
+
                 FormState::Chat { .. } => {
                     ui::chat::handle_input(app, key).await;
-                },
-                
+                }
+
                 FormState::ChatCreation(..) => {
                     ui::create_chat::handle_input(app, key).await;
                 }
@@ -145,12 +133,12 @@ pub async fn run_app(app: &mut App, rx: spmc::Receiver<u8>) -> Result<(), Box<dy
                     ui::user_menu::handle_input(app, key).await;
                 }
 
-                FormState::ProfileView {..} => {
-                    ui::profile::handle_input(app,key).await;
+                FormState::ProfileView { .. } => {
+                    ui::profile::handle_input(app, key).await;
                 }
 
-                FormState::Close{..} => {
-                    if ui::close::handle_input(app, key).await{
+                FormState::Close { .. } => {
+                    if ui::close::handle_input(app, key).await {
                         break;
                     }
                 }

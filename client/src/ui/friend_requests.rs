@@ -1,4 +1,4 @@
-use crate::app::{ActiveField, App, FormState};
+use crate::app::{App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -7,7 +7,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     Layout::default()
@@ -19,8 +18,8 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
                 .chain([Constraint::Min(0)])
                 .collect::<Vec<_>>(),
         )
-        .split(f.size());
-    
+        .split(f.area());
+
     let fr_list = &app.friend_requests;
 
     let selected = if let FormState::FriendRequests { selected_index } = app.state {
@@ -49,14 +48,19 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
     app.set_friend_request_num(items.len());
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Friend Requests"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Friend Requests")
+                .title("Select a request to accept/deny"),
+        )
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     let area = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
     f.render_widget(list, area);
 }
@@ -95,7 +99,10 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             app.set_confirm_friend_request(idx);
         }
 
-        Esc => app.set_friend_menu(),
+        Esc => {
+            app.message.clear();
+            app.set_friend_menu()
+        }
 
         _ => {}
     }

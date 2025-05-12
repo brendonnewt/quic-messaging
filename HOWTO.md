@@ -31,10 +31,19 @@ docker compose -f [local.docker-compose.yml](http://_vscodecontentref_/1) up -d
 
 4. Paste the queries into the MySQL console and execute them to set up the required tables.
 
-## ENV File
+## ENV Files
 
 To configure the application, create an `.env` file in the root of the `server` directory. The file should include the following environment variables:
 
 ```env
 DATABASE_URL=mysql://root:password@localhost:3307/messaging
 SECRET=anythingyouwant
+```
+
+Creat an `.env` file in the root of the `client` directory. The file should contain the following environment variables:
+
+```env
+SERVER_ADDR=34.10.116.176
+```
+
+NOTE: The IP address `34.10.116.176` is the IP address for the hosted GCP server. To run the server locally, run the server with `cargo run` in the `server` directory and replace the IP address with your local IP address.

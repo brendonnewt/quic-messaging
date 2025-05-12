@@ -1,12 +1,10 @@
-use crate::entity::chats::Column;
 use crate::{entity, utils};
 use chrono::Utc;
 use entity::{chat_members, chats};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Paginator, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, SelectModel, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set,
 };
-use shared::models::user_models::User;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use utils::errors::server_error::ServerError;
@@ -164,6 +162,40 @@ pub async fn get_user_chats(
     });
 
     Ok(chats)
+}
+
+pub async fn get_user_chats_paged(
+    user_id: i32,
+    page: u64,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<Vec<entity::chats::Model>, ServerError> {
+    let chats = get_user_chats(user_id, db.clone()).await?;
+
+    let start = (page * page_size) as usize;
+    let paginated_chats = chats
+        .into_iter()
+        .skip(start)
+        .take(page_size as usize)
+        .collect();
+
+    Ok(paginated_chats)
+}
+
+pub async fn get_chats_page_count(
+    user_id: i32,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<u64, ServerError> {
+    let total_chats = entity::chat_members::Entity::find()
+        .filter(entity::chat_members::Column::UserId.eq(user_id))
+        .count(&*db)
+        .await
+        .map_err(ServerError::DatabaseError)?;
+
+    let page_count = (total_chats + page_size - 1) / page_size; // ceiling division
+
+    Ok(page_count)
 }
 
 pub async fn get_chat_user_ids(

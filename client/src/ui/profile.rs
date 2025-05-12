@@ -1,3 +1,4 @@
+use crate::app::{ActiveField, App, FormState};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
@@ -8,15 +9,15 @@ use ratatui::{
     Frame,
 };
 use shared::client_response::{ClientRequest, Command};
-use shared::models::auth_models::AuthResponseModel;
-use shared::models::chat_models::ChatList;
-use crate::app::{App, ActiveField, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     // Debug: show when render runs and current state
 
-
-    if let FormState::ProfileView { new_password, active_field } = &app.state {
+    if let FormState::ProfileView {
+        new_password,
+        active_field,
+    } = &app.state
+    {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(4)
@@ -35,7 +36,6 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
 
         // Debug: show the current password length being displayed (masked)
 
-
         // Password box (masked)
         let pass_para = Paragraph::new(Text::from("*".repeat(new_password.len())))
             .block(Block::default().borders(Borders::ALL).title("Password"))
@@ -49,23 +49,22 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
     // Only match if we're in the ProfileView
     let (new_password, active_field) = match &mut app.state {
-        FormState::ProfileView { new_password, active_field } => (new_password, active_field),
+        FormState::ProfileView {
+            new_password,
+            active_field,
+        } => (new_password, active_field),
         _ => return,
     };
 
     match key.code {
         Backspace => {
             if *active_field == ActiveField::Password {
-
                 new_password.pop();
-
             }
         }
         Char(c) => {
             if *active_field == ActiveField::Password {
-
                 new_password.push(c);
-
             }
         }
         Enter => {
@@ -84,7 +83,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     } else if let Some(message) = response.message.clone() {
                         app.message = message;
                     }
-                },
+                }
                 Err(err) => {
                     app.message = err.to_string();
                 }
@@ -92,7 +91,6 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
 
         Esc => {
-
             app.set_user_menu().await;
             app.message = "Returning to main menu...".into();
         }

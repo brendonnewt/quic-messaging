@@ -1,7 +1,6 @@
+use crate::utils::jwt::CreationError;
 use sea_orm::DbErr;
 use thiserror::Error;
-use crate::utils::jwt;
-use crate::utils::jwt::CreationError;
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -10,19 +9,22 @@ pub enum ServerError {
 
     #[error("User already exists")]
     UserAlreadyExists,
-    
+
+    #[error("Friendship already exists")]
+    AlreadyFriends,
+
     #[error("Chat already exists")]
     ChatAlreadyExists,
-    
+
     #[error("User not found")]
     UserNotFound,
-    
+
     #[error("Action blocked")]
     ActionBlocked,
-    
+
     #[error("Action forbidden")]
     Forbidden,
-    
+
     #[error("Invalid Token: {0}")]
     InvalidToken(String),
 

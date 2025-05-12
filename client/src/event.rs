@@ -1,6 +1,6 @@
 /* Handles input events and updates app state */
 
-use crossterm::event::{self, KeyCode, KeyEvent, Event};
+use crossterm::event::{self, Event, KeyEvent};
 use std::time::Duration;
 
 pub fn poll_event() -> Result<Option<KeyEvent>, Box<dyn std::error::Error>> {

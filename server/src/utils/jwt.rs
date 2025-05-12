@@ -1,9 +1,9 @@
+use super::constants;
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use jsonwebtoken::errors::Error as JWTLibError;
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use super::constants;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Claims {

@@ -1,5 +1,7 @@
+use crate::app::{App, FormState};
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
+use ratatui::widgets::Paragraph;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -7,22 +9,27 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use ratatui::widgets::Paragraph;
-use shared::client_response::{ClientRequest, Command};
-use crate::app::{ActiveField, App, FormState};
+
+const PAGE_SIZE: u64 = 10;
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
-    let options = ["Chats", "Add Friends", "Friend List", "Edit Password", "Log Out"];
+    let options = [
+        "Chats",
+        "Add Friends",
+        "Friend List",
+        "Edit Password",
+        "Log Out",
+    ];
 
     // Split the screen into menu area and message area
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([
-            Constraint::Min(10),  // Menu list area
+            Constraint::Min(10),   // Menu list area
             Constraint::Length(3), // Message display
         ])
-        .split(f.size());
+        .split(f.area());
 
     // Further split the top part for list items
     let selected = if let FormState::UserMenu { selected_index } = app.state {
@@ -31,17 +38,23 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         0
     };
 
-    let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
-        let style = if i == selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default()
-        };
-        ListItem::new(opt).style(style)
-    }).collect();
+    let items: Vec<ListItem> = options
+        .iter()
+        .enumerate()
+        .map(|(i, &opt)| {
+            let style = if i == selected {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(opt).style(style)
+        })
+        .collect();
 
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Logged In"))
+        .block(Block::default().borders(Borders::ALL).title("User Menu"))
         .highlight_style(Style::default().bg(Color::DarkGray));
 
     f.render_widget(list, main_chunks[0]);
@@ -49,7 +62,10 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let combined_message = if app.message.is_empty() {
         format!("You have {} unread messages", app.unread_count)
     } else {
-        format!("{} | You have {} unread messages", app.message, app.unread_count)
+        format!(
+            "{} | You have {} unread messages",
+            app.message, app.unread_count
+        )
     };
 
     // Render app message
@@ -64,24 +80,23 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         match key.code {
             KeyCode::Enter | KeyCode::Char('\r') => match selected_index {
                 0 => {
-                    app.message = "".to_string();
-                    app.enter_chats_view().await
-                }, // index 0 = Chats
+                    app.message.clear();
+                    app.enter_chats_view(0, PAGE_SIZE).await
+                } // index 0 = Chats
                 1 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.set_add_friend()
-                },
+                }
                 2 => {
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.set_friend_menu();
-                },
-                3 => { app.set_profile_view()},
+                }
+                3 => app.set_profile_view(),
 
                 4 => {
-
-                    app.message = "".to_string();
+                    app.message.clear();
                     app.logout().await
-                },
+                } // Log Out
                 _ => {}
             },
             KeyCode::Up => {
@@ -98,4 +113,3 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
     }
 }
-

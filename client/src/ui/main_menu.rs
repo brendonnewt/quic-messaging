@@ -1,27 +1,25 @@
-use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
+use crate::app::App;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     backend::Backend,
-    layout::{Layout, Constraint, Direction},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::app::{App, FormState};
-use ratatui::widgets::ListState;
 
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Length(3), Constraint::Min(0)])
-        .split(f.size());
+        .split(f.area());
 
     // Display personalized message if logged in
     let main_menu_message = if app.logged_in {
         format!("Welcome, {}", app.username) // Display the stored username
     } else {
-        "Main Menu: Select an option".into() // Default message if not logged in
+        "Select an option".into() // Default message if not logged in
     };
 
     // Render the main menu greeting or instruction message
@@ -38,7 +36,7 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         "Friend List",
         "Edit Password",
         "Log Out",
-        "Close"
+        "Close",
     ];
 
     // Pre-login options
@@ -57,7 +55,9 @@ pub fn render<B: Backend>(f: &mut Frame, app: &App) {
         .enumerate()
         .map(|(i, opt)| {
             let style = if i == app.selected_index {
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };

@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Server listening on {}", addr);
 
     // List of Logged_In Users
-    let logged_in = Arc::new(DashMap::<i32, Arc<Mutex<SendStream>>>::new());
+    let logged_in = Arc::new(DashMap::<i32, Vec<Arc<Mutex<SendStream>>>>::new());
 
     while let Some(conn) = endpoint.accept().await {
         tokio::spawn(handle_connection(conn, db_arc.clone(), logged_in.clone()));
@@ -51,10 +51,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>) {
+async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     match conn.await {
         Ok(connection) => {
             info!("New connection from {}", connection.remote_address());
+
+            let current_user: Arc<Mutex<Option<i32>>> = Arc::new(Mutex::new(None));
+
+
+
             let send_refresh = match connection.open_uni().await {
                 Ok(send) => send,
                 Err(err) => {
@@ -64,9 +69,43 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
             };
             let refresh_stream = Arc::new(Mutex::new(send_refresh));
 
+            {
+                let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
+                let mut connection_clone = connection.clone();
+                let refresh_clone = refresh_stream.clone();
+
+                tokio::spawn(async move {
+                    let _ = connection_clone.closed().await;
+                    if let Some(user_id) = *current_user.lock().await {
+                        let current_id = { refresh_clone.lock().await.id() };
+                        let mut remove_user = false;
+                        if let Some(mut vec) = logged_in.get_mut(&user_id) {
+                            for (i, entry) in vec.clone().iter().enumerate() {
+                                let stream = entry.lock().await;
+                                if stream.id().eq(&current_id) {
+                                    vec.remove(i);
+                                    break;
+                                }
+                            }
+
+                            if vec.is_empty() {
+                                remove_user = true;
+                            }
+                        }
+
+                        if remove_user {
+                            logged_in.remove(&user_id);
+                        }
+                    }
+
+                });
+            }
+
             while let Ok((mut send, mut recv)) = connection.accept_bi().await {
                 let db = db.clone();
                 let logged_in = logged_in.clone();
+                let current_user = current_user.clone();
                 let refresh_clone = refresh_stream.clone();
                 tokio::spawn(async move {
                     // Receive messages from the client and respond to them until the connection closes
@@ -94,7 +133,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
                         };
 
                         // Match command and forward message to the appropriate controller
-                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone).await;
+                        let response = handle_command(req, db.clone(), logged_in.clone(), refresh_clone, current_user.clone()).await;
 
                         let users: Vec<i32> = logged_in.iter().map(|r| r.key().clone()).collect();
                         info!("List Of Logged In Users: {:?}", users);
@@ -114,13 +153,14 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
 
 /// Matches the ClientRequest command to one recognized by the system
 /// and returns a response given by the controller for that command
-async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>, refresh_stream: Arc<Mutex<SendStream>>) -> ServerResponse {
+async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_in: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>, refresh_stream: Arc<Mutex<SendStream>>, current_user: Arc<Mutex<Option<i32>>>) -> ServerResponse {
     match req.command {
         Command::Register { username, password } => {
             let result = auth_controller::register(username.clone(), password, db.clone()).await;
             // User is automatically logged in upon registration
             if let Ok(auth) = &result {
-                logged_in.insert(auth.user_id, refresh_stream);
+                logged_in.insert(auth.user_id, vec![refresh_stream]);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Registered")
@@ -130,7 +170,14 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         Command::Login { username, password } => {
             let result = auth_controller::login(username.clone(), password, db.clone()).await;
             if let Ok(auth) = &result {
-                logged_in.insert(auth.user_id, refresh_stream);
+                let vec = logged_in.get_mut(&auth.user_id);
+                if let Some(mut vec) = vec {
+                    vec.push(refresh_stream);
+                } else {
+                    logged_in.insert(auth.user_id, vec![refresh_stream]);
+                }
+                info!("User {} logged in", username);
+                current_user.lock().await.replace(auth.user_id);
             }
             let jwt = result.as_ref().ok().map(|r| r.token.clone());
             build_response(result, jwt, "Logged in")
@@ -145,16 +192,33 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             }
         }
 
-        Command::Logout {username} => {
-            let result: Result<_, ServerError> = Ok(ServerResponseModel{success: true});
+        Command::Logout { username } => {
+            let result: Result<_, ServerError> = Ok(ServerResponseModel { success: true });
             let user = user_controller::get_user_by_username(username.clone(), db.clone()).await;
             match user {
                 Ok(user) => {
-                    if logged_in.remove(&user.id).is_some() {
-                        info!("User {} logged out", username);
-                    } else {
-                        warn!("Logout: user {} was not marked as logged in", username);
+                    // Find the stream corresponding to the current session
+                    let current_id = { refresh_stream.lock().await.id() };
+
+                    let mut remove_user = false;
+                    if let Some(mut vec) = logged_in.get_mut(&user.id) {
+                        for (i, entry) in vec.clone().iter().enumerate() {
+                            let stream = entry.lock().await;
+                            if stream.id().eq(&current_id) {
+                                vec.remove(i);
+                                break;
+                            }
+                        }
+
+                        if vec.is_empty() {
+                            remove_user = true;
+                        }
                     }
+
+                    if remove_user {
+                        logged_in.remove(&user.id);
+                    }
+
                     build_response(result, req.jwt, "Logged out")
                 }
                 Err(e) => {
@@ -209,7 +273,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
             build_response(result, jwt.clone(), "Unfriended")
         }
 
-        
+
         Command::GetChats => {
             if let Some(jwt) = req.jwt {
                 build_response(chat_controller::get_user_chats(jwt, db.clone()).await, None, "Chat List")
@@ -217,7 +281,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
-        
+
         Command::GetChatMessages { chat_id, page, page_size} => {
             if let Some(jwt) = req.jwt {
                 build_response(chat_controller::get_chat_messages(jwt, chat_id, page, page_size, db.clone()).await, None, "Chat Messages")
@@ -225,7 +289,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
-        
+
         Command::SendMessage { chat_id, content} => {
             if let Some(jwt) = req.jwt {
                 let result = chat_controller::send_message(jwt, chat_id, content, db.clone()).await;
@@ -273,7 +337,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
-        
+
         Command::GetUnreadMessageCount => {
             if let Some(jwt) = req.jwt {
                 build_response(chat_controller::get_unread_message_count(jwt, db.clone()).await, None, "Unread Message Count")
@@ -281,7 +345,7 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
                 build_response::<(), ServerError>(Err(ServerError::InvalidToken("No token provided".to_string())), None, "")
             }
         }
-        
+
         Command::MarkMessagesRead { chat_id } => {
             if let Some(jwt) = req.jwt {
                 build_response(chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await, None, "Unread Message Count")
@@ -408,22 +472,25 @@ async fn deserialize_client_request(buf: &mut Vec<u8>) -> Result<ClientRequest, 
     }
 }
 
-async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Arc<Mutex<SendStream>>>>) {
+async fn notify_users(user_ids: Vec<i32>, stream_map: Arc<DashMap<i32, Vec<Arc<Mutex<SendStream>>>>>) {
     for user_id in user_ids {
-        if let Some(stream_ref) = stream_map.get_mut(&user_id) {
-            let mut stream_lock = stream_ref.lock().await;
-            println!("Notifying user {} in stream map", user_id);
-            let bytes = serde_json::to_vec(&shared::server_response::Refresh).expect("Failed to serialize refresh ping");
-            let len = (bytes.len() as u32).to_be_bytes();
-            if let Err(e) = stream_lock.write_all(&len).await {
-                eprintln!("Failed to notify user {}: {}", user_id, e);
-                stream_map.remove(&user_id);
-                continue;
-            }
-            if let Err(e) = stream_lock.write_all(&bytes).await {
-                eprintln!("Failed to notify user {}: {}", user_id, e);
-                stream_map.remove(&user_id);
-                continue;
+        if let Some(stream_vec) = stream_map.get_mut(&user_id) {
+            for stream in stream_vec.iter() {
+                let mut stream_lock = stream.lock().await;
+                println!("Notifying user {} in stream map", user_id);
+                let bytes = serde_json::to_vec(&shared::server_response::Refresh)
+                    .expect("Failed to serialize refresh ping");
+                let len = (bytes.len() as u32).to_be_bytes();
+                if let Err(e) = stream_lock.write_all(&len).await {
+                    eprintln!("Failed to notify user {}: {}", user_id, e);
+                    stream_map.remove(&user_id);
+                    continue;
+                }
+                if let Err(e) = stream_lock.write_all(&bytes).await {
+                    eprintln!("Failed to notify user {}: {}", user_id, e);
+                    stream_map.remove(&user_id);
+                    continue;
+                }
             }
         }
     }

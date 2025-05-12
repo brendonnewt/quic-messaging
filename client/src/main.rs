@@ -44,11 +44,10 @@ async fn main()  -> Result<(), Box<dyn Error>>{
 
     let mut transport_config = TransportConfig::default();
     transport_config.max_idle_timeout(
-        Some(Duration::from_secs(300)
+        Some(Duration::from_secs(300) //300 sec = 5 minutes
             .try_into()
             .expect("valid idle timeout")),
     );
-    transport_config.keep_alive_interval(Some(Duration::from_secs(30)));
 
     client_cfg.transport_config( Arc::new(transport_config) );
 

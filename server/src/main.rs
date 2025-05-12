@@ -67,7 +67,7 @@ async fn handle_connection(conn: quinn::Connecting, db: Arc<DatabaseConnection>,
             {
                 let logged_in = logged_in.clone();
                 let current_user = current_user.clone();
-                let mut connection_clone = connection.clone();
+                let connection_clone = connection.clone();
                 let refresh_clone = refresh_stream.clone();
 
                 tokio::spawn(async move {
@@ -447,8 +447,15 @@ async fn handle_command(req: ClientRequest, db: Arc<DatabaseConnection>, logged_
         
         Command::MarkMessagesRead { chat_id } => {
             if let Some(jwt) = req.jwt {
+                let result = chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await;
+                if result.is_ok() {
+                    if let Some(user_id) = *current_user.lock().await {
+                        notify_users(vec![user_id], logged_in.clone()).await;
+                    }
+                    
+                }
                 build_response(
-                    chat_controller::mark_messages_read(jwt, chat_id, db.clone()).await,
+                    result,
                     None,
                     "Unread Message Count",
                 )

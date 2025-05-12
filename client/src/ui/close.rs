@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode::{Down, Enter, Esc, Up};
+use crossterm::event::KeyCode::{Enter};
 use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
@@ -7,7 +7,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
     Frame,
 };
-use shared::client_response::{ClientRequest, Command};
 use crate::app::{App, FormState};
 
 pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
@@ -16,12 +15,12 @@ pub fn render<B: Backend>(f: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .margin(4)
         .constraints([Constraint::Min(0)])
-        .split(f.size())[0];
+        .split(f.area())[0];
 
-    let (req_i, opt_i) = if let FormState::ConfirmFriendRequest { selected_index, selected_option } = app.state {
-        (selected_index, selected_option)
+    let opt_i = if let FormState::ConfirmFriendRequest { selected_option, .. } = app.state {
+        selected_option
     } else {
-        (0, 0)
+        0
     };
 
     let title = "Program Disconnected - Close and Restart".to_string();

@@ -257,10 +257,6 @@ impl App {
         self.state = FormState::MainMenu;
     }
 
-    pub fn set_close(&mut self) {
-        self.state = FormState::Close;
-    }
-
     pub fn set_add_friend(&mut self) {
         self.state = FormState::AddFriend {
             id: String::new(),

@@ -7,10 +7,12 @@ use std::sync::Arc;
 
 pub async fn get_user_chats(
     jwt: String,
+    page: u64,
+    page_size: u64,
     db: Arc<DatabaseConnection>,
 ) -> Result<ChatList, ServerError> {
     // Get a list of users' chats in timestamp descending order
-    chat_service::get_user_chats(jwt, db.clone()).await
+    chat_service::get_user_chats(jwt, page, page_size, db.clone()).await
 }
 
 pub async fn get_chat_messages(
@@ -40,6 +42,14 @@ pub async fn get_chat_page_count(
     db: Arc<DatabaseConnection>,
 ) -> Result<Count, ServerError> {
     chat_service::get_chat_page_count(jwt, chat_id, page_size, db.clone()).await
+}
+
+pub async fn get_chats_page_count(
+    jwt: String,
+    page_size: u64,
+    db: Arc<DatabaseConnection>,
+) -> Result<Count, ServerError> {
+    chat_service::get_chats_page_count(jwt, page_size, db.clone()).await
 }
 
 pub async fn create_chat(

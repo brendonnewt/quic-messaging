@@ -131,7 +131,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         KeyCode::Down => handle_down(app).await,
         KeyCode::Esc => {
             app.message.clear();
-            app.enter_chats_view().await;
+            app.enter_chats_view(0, PAGE_SIZE).await;
         }
         _ => {}
     }

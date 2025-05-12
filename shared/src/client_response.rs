@@ -47,10 +47,16 @@ pub enum Command {
         chat_id: i32,
         content: String,
     },
-    GetChats,
+    GetChats {
+        page: u64,
+        page_size: u64,
+    },
     GetChatMessages {
         chat_id: i32,
         page: u64,
+        page_size: u64,
+    },
+    GetChatsPages {
         page_size: u64,
     },
     GetChatPages {

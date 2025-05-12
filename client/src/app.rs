@@ -59,6 +59,8 @@ pub enum FormState {
     },
     Chats {
         selected_index: usize,
+        page: u64,
+        page_count: u64,
     },
     Chat {
         chat_name: String,
@@ -131,8 +133,8 @@ impl App {
                 self.enter_chat_view(*chat_id, chat_name.clone(), *page, PAGE_SIZE, input_buffer)
                     .await;
             }
-            FormState::Chats { .. } => {
-                self.enter_chats_view().await;
+            FormState::Chats { page, .. } => {
+                self.enter_chats_view(*page, PAGE_SIZE).await;
             }
             FormState::UserMenu { .. } => {
                 self.set_user_menu().await;
@@ -441,35 +443,12 @@ impl App {
         self.user_id = -1;
     }
 
-    pub async fn enter_chats_view(&mut self) {
-        let request = ClientRequest {
-            jwt: Some(self.jwt.clone()),
-            command: Command::GetChats,
-        };
+    pub async fn enter_chats_view(&mut self, page: u64, page_size: u64) {
 
-        match self.send_request(&request).await {
-            Ok(response) => {
-                if response.success {
-                    if let Some(data) = response.data {
-                        match serde_json::from_value::<ChatList>(data) {
-                            Ok(chats) => {
-                                self.chats = chats.chats;
-                                self.state = FormState::Chats { selected_index: 0 };
-                            }
-                            Err(e) => {
-                                self.message = format!("Parse error: {}", e);
-                            }
-                        }
-                    } else {
-                        self.message = "No chat data returned".into();
-                    }
-                } else {
-                    self.message = response.message.unwrap_or("Failed to get chats".into());
-                }
-            }
-            Err(err) => {
-                self.message = format!("Error: {}", err);
-            }
+        let page_count = self.get_chats_page_count(page_size).await;
+
+        if let Some(page_count) = page_count {
+            self.get_chat_list(page, page_size, page_count).await;
         }
     }
 
@@ -482,7 +461,7 @@ impl App {
         input_buffer: Option<String>,
     ) {
         // Get the number of pages in the chat
-        let page_count = self.get_page_count(chat_id, page_size).await;
+        let page_count = self.get_chat_page_count(chat_id, page_size).await;
 
         if let Some(page_count) = page_count {
             self.get_chat_messages(
@@ -569,7 +548,46 @@ impl App {
         }
     }
 
-    pub async fn get_page_count(&mut self, chat_id: i32, page_size: u64) -> Option<u64> {
+    pub async fn get_chat_list(&mut self, page: u64, page_size: u64, page_count: u64) {
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::GetChats {
+                page,
+                page_size,
+            },
+        };
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<ChatList>(data) {
+                            Ok(chats) => {
+                                self.chats = chats.chats;
+                                self.state = FormState::Chats {
+                                    page_count,
+                                    page,
+                                    selected_index: self.selected_index,
+                                };
+                                self.message = "".into();
+                            }
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No chats data returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get chats".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+    }
+
+    pub async fn get_chat_page_count(&mut self, chat_id: i32, page_size: u64) -> Option<u64> {
         let request = ClientRequest {
             jwt: Some(self.jwt.clone()),
             command: Command::GetChatPages { chat_id, page_size },
@@ -588,7 +606,36 @@ impl App {
                         self.message = "No page count returned".into();
                     }
                 } else {
-                    self.message = response.message.unwrap_or("Failed to get chat".into());
+                    self.message = response.message.unwrap_or("Failed to get chat pages".into());
+                }
+            }
+            Err(err) => {
+                self.message = format!("Error: {}", err);
+            }
+        }
+        None
+    }
+
+    pub async fn get_chats_page_count(&mut self, page_size: u64) -> Option<u64> {
+        let request = ClientRequest {
+            jwt: Some(self.jwt.clone()),
+            command: Command::GetChatsPages { page_size },
+        };
+        match self.send_request(&request).await {
+            Ok(response) => {
+                if response.success {
+                    if let Some(data) = response.data {
+                        match serde_json::from_value::<Count>(data) {
+                            Ok(count) => return Some(count.count),
+                            Err(e) => {
+                                self.message = format!("Parse error: {}", e);
+                            }
+                        }
+                    } else {
+                        self.message = "No page count returned".into();
+                    }
+                } else {
+                    self.message = response.message.unwrap_or("Failed to get chats pages".into());
                 }
             }
             Err(err) => {

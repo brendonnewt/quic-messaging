@@ -10,6 +10,8 @@ use ratatui::{
     Frame,
 };
 
+const PAGE_SIZE: u64 = 10;
+
 pub fn render<B: Backend>(f: &mut Frame, app: &App) {
     let options = ["Chats", "Add Friends", "Friend List", "Edit Password", "Log Out"];
 
@@ -73,7 +75,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             KeyCode::Enter | KeyCode::Char('\r') => match selected_index {
                 0 => {
                     app.message.clear();
-                    app.enter_chats_view().await
+                    app.enter_chats_view(0, PAGE_SIZE).await
                 } // index 0 = Chats
                 1 => {
                     app.message.clear();

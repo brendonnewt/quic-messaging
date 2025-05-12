@@ -252,10 +252,10 @@ async fn handle_command(
             build_response(result, jwt.clone(), "Unfriended")
         }
 
-        Command::GetChats => {
+        Command::GetChats { page, page_size } => {
             if let Some(jwt) = req.jwt {
                 build_response(
-                    chat_controller::get_user_chats(jwt, db.clone()).await,
+                    chat_controller::get_user_chats(jwt, page, page_size, db.clone()).await,
                     None,
                     "Chat List",
                 )
@@ -303,6 +303,22 @@ async fn handle_command(
 
                 // Send the response back
                 build_response(result, None, "Message Sent")
+            } else {
+                build_response::<(), ServerError>(
+                    Err(ServerError::InvalidToken("No token provided".to_string())),
+                    None,
+                    "",
+                )
+            }
+        }
+
+        Command::GetChatsPages { page_size } => {
+            if let Some(jwt) = req.jwt {
+                build_response(
+                    chat_controller::get_chats_page_count(jwt, page_size, db.clone()).await,
+                    None,
+                    "Chats Page Count",
+                )
             } else {
                 build_response::<(), ServerError>(
                     Err(ServerError::InvalidToken("No token provided".to_string())),

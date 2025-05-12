@@ -61,12 +61,14 @@ pub async fn send_message(
 
 pub async fn get_user_chats(
     jwt: String,
+    page: u64,
+    page_size: u64,
     db: Arc<DatabaseConnection>,
 ) -> Result<ChatList, ServerError> {
     let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
     let user_id = claim.claims.user_id;
 
-    let chats = chat_repository::get_user_chats(user_id, db.clone()).await?;
+    let chats = chat_repository::get_user_chats_paged(user_id, page, page_size, db.clone()).await?;
 
     let futures = chats.into_iter().map(|c| {
         let db = db.clone();
@@ -143,6 +145,16 @@ pub async fn get_chat_page_count(
     jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
 
     let pages = chat_repository::get_chat_page_count(chat_id, page_size, db.clone()).await?;
+
+    Ok(Count { count: pages })
+}
+
+pub async fn get_chats_page_count(jwt: String, page_size: u64, db: Arc<DatabaseConnection>) -> Result<Count, ServerError> {
+    // Ensure token provided is valid
+    let claim = jwt::decode_jwt(&jwt).map_err(|e| ServerError::InvalidToken(e.to_string()))?;
+    let user_id = claim.claims.user_id;
+
+    let pages = chat_repository::get_chats_page_count(user_id, page_size, db.clone()).await?;
 
     Ok(Count { count: pages })
 }

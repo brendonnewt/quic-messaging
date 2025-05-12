@@ -11,6 +11,8 @@ use ratatui::{
 use shared::models::user_models::User;
 use std::mem;
 
+const PAGE_SIZE: u64 = 10;
+
 // Additional FormState variant to support the chat creation flow
 #[derive(Debug, Clone)]
 pub enum ChatCreationPhase {
@@ -165,12 +167,12 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         username: app.username.clone(),
                     });
                     app.create_chat(chosen.clone(), None).await;
-                    app.enter_chats_view().await;
+                    app.enter_chats_view(0, PAGE_SIZE).await;
                     return;
                 }
             }
             KeyCode::Esc => {
-                app.enter_chats_view().await;
+                app.enter_chats_view(0, PAGE_SIZE).await;
                 return;
             }
             _ => {}
@@ -192,7 +194,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                         username: app.username.clone(),
                     });
                     app.create_chat(chosen.clone(), Some(name)).await;
-                    app.enter_chats_view().await;
+                    app.enter_chats_view(0, PAGE_SIZE).await;
                     return;
                 } else {
                     app.message = "Group name cannot be empty.".into();
@@ -200,7 +202,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Esc => {
                 app.message.clear();
-                app.enter_chats_view().await;
+                app.enter_chats_view(0, PAGE_SIZE).await;
                 return;
             }
             _ => {}

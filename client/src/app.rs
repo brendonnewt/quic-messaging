@@ -67,6 +67,7 @@ pub enum FormState {
         chat_id: i32,
         page: u64,
         page_count: u64,
+        page_size: u64,
         input_buffer: String,
         messages: Vec<ChatMessage>,
     },
@@ -456,7 +457,7 @@ impl App {
         &mut self,
         chat_id: i32,
         chat_name: String,
-        page: u64,
+        mut page: u64,
         page_size: u64,
         input_buffer: Option<String>,
     ) {
@@ -464,6 +465,9 @@ impl App {
         let page_count = self.get_chat_page_count(chat_id, page_size).await;
 
         if let Some(page_count) = page_count {
+            if page > page_count {
+               page = page_count; 
+            }
             self.get_chat_messages(
                 chat_id,
                 chat_name,
@@ -504,8 +508,9 @@ impl App {
                                     chat_name,
                                     chat_id,
                                     page_count,
+                                    page_size,
                                     messages: messages.messages,
-                                    page: 0,
+                                    page,
                                     input_buffer: input_buffer.unwrap_or("".to_string()),
                                 };
                                 self.message = "".into();

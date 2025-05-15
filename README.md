@@ -1,3 +1,6 @@
+# QUIC Messaging
+This repository contains a server crate to run a messaging webserver that stores messages and notifies clients,
+as well as a client crate to send messages to other clients!
 
 # How to Set Up and Connect to the Local Database
 
@@ -6,7 +9,7 @@
 Use Docker Compose to start the database:
 
 ```bash
-docker compose -f [local.docker-compose.yml](http://_vscodecontentref_/1) up -d
+docker compose -f docker/local.docker-compose.yml up -d
 ```
 
 - To stop the database, use: `docker compose -f docker/local.docker-compose.yml down`
@@ -40,10 +43,14 @@ DATABASE_URL=mysql://root:password@localhost:3307/messaging
 SECRET=anythingyouwant
 ```
 
-Creat an `.env` file in the root of the `client` directory. The file should contain the following environment variables:
+Create an `.env` file in the root of the `client` directory. The file should contain the following environment variables:
 
 ```env
 SERVER_ADDR=34.10.116.176
 ```
 
 NOTE: The IP address `34.10.116.176` is the IP address for the hosted GCP server. To run the server locally, run the server with `cargo run` in the `server` directory and replace the IP address with your local IP address.
+
+### Running Your Own Messaging Server
+It's important to know that once the server is started on your local machine, others can connect to it using the client with your IP!
+This is helpful if you want an in-house messaging system where all of your messages are encrypted and are stored locally.

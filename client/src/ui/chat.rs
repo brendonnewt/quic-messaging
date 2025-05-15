@@ -357,7 +357,7 @@ pub async fn get_messages(app: &mut App, chat_id: i32, mut new_page: u64, page_s
                                 _ => return,
                             };
                             *page_count = count.count;
-                            if new_page >= count.count {
+                            if new_page >= count.count && new_page != 0 {
                                 new_page = count.count - 1;
                             }
                         }

@@ -46,10 +46,8 @@ SECRET=anythingyouwant
 Create an `.env` file in the root of the `client` directory. The file should contain the following environment variables:
 
 ```env
-SERVER_ADDR=34.10.116.176
+SERVER_ADDR=[SERVER_IP]
 ```
-
-NOTE: The IP address `34.10.116.176` is the IP address for the hosted GCP server. To run the server locally, run the server with `cargo run` in the `server` directory and replace the IP address with your local IP address.
 
 ### Running Your Own Messaging Server
 It's important to know that once the server is started on your local machine, others can connect to it using the client with your IP!
